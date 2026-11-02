@@ -53,6 +53,7 @@ export default function SettingsPanel({ s, set, close }: P) {
         <Select label="하단 오른쪽 정보" disabled={scroll} value={s.bottomInfo.right} opts={[['none', '표시 안 함'], ['page', '페이지'], ['percent', '진행률']]} onChange={v => set({ bottomInfo: { ...s.bottomInfo, right: v } })} />
         <Toggle label="화면 항상 켜짐" on={s.keepScreenOn} onChange={v => set({ keepScreenOn: v })} />
         <button className="link reset" onClick={() => set({ ...DEFAULT_SETTINGS })}>설정 초기화</button>
+        <p className="hint ver">웹소설 뷰어 v{__APP_VERSION__}</p>
       </div>
     </div>
   );

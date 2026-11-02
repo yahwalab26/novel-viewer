@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { Annotation, Book, LibraryRepository, ReadingState } from '../core/model';
+import { readSelection, type Picked } from './selection';
 import { MemoSheet, NotesPanel, SelectionBar, renderSegs } from './AnnotationUI';
 import type { ViewerSettings } from '../core/settings';
 import SettingsPanel from './SettingsPanel';
@@ -14,7 +15,7 @@ export default function Viewer({ repo, book, state, settings: s, onSettings, onP
   const [page, setPage] = useState(0); const [pages, setPages] = useState(1);
   const [tick, setTick] = useState(0);
   const [anns, setAnns] = useState<Annotation[]>([]);
-  const [sel, setSel] = useState<null | { i: number; start: number; end: number; quote: string }>(null);
+  const [sel, setSel] = useState<null | Picked>(null);
   const [edit, setEdit] = useState<null | { ann: Annotation; isNew: boolean }>(null);
   const [now, setNow] = useState(() => new Date());
   const wrap = useRef<HTMLDivElement>(null); const flow = useRef<HTMLDivElement>(null);
@@ -125,15 +126,9 @@ export default function Viewer({ repo, book, state, settings: s, onSettings, onP
   useEffect(() => {
     let t: number;
     const h = () => {
-      const sl = window.getSelection(), root = wrap.current;
-      const drop = () => { clearTimeout(t); t = window.setTimeout(() => setSel(null), 600); };      // 버튼 탭 중 선택이 풀려도 잠시 유지
-      if (!sl || sl.isCollapsed || !sl.rangeCount || !root || !root.contains(sl.getRangeAt(0).commonAncestorContainer)) return drop();
-      const r = sl.getRangeAt(0), blk = (n: Node) => (n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest<HTMLElement>('[data-i]');
-      const a = blk(r.startContainer), b = blk(r.endContainer);
-      if (!a || a !== b || a.tagName !== 'P' || !r.toString().trim()) return drop();
-      const pre = document.createRange(); pre.selectNodeContents(a); pre.setEnd(r.startContainer, r.startOffset);
-      clearTimeout(t); const start = pre.toString().length, quote = r.toString();
-      setSel({ i: Number(a.dataset.i), start, end: start + quote.length, quote });
+      const picked = wrap.current ? readSelection(wrap.current, window.getSelection()) : null;
+      if (!picked) { clearTimeout(t); t = window.setTimeout(() => setSel(null), 600); return; }  // 버튼 탭 중 선택이 풀려도 잠시 유지
+      clearTimeout(t); setSel(picked);
     };
     document.addEventListener('selectionchange', h); return () => { document.removeEventListener('selectionchange', h); clearTimeout(t); };
   }, []);
@@ -165,14 +160,14 @@ export default function Viewer({ repo, book, state, settings: s, onSettings, onP
         <button onClick={() => setPanel(panel === 'toc' ? null : 'toc')}>목차</button>
         <button onClick={() => setPanel(panel === 'notes' ? null : 'notes')}>메모{anns.length ? ` ${anns.length}` : ''}</button>
         <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')} aria-label="설정">Aa</button></div>
-      <div ref={wrap} className="wrap" onClick={tap} onScroll={scroll ? later : undefined}>
+      <div ref={wrap} className="wrap" onClick={tap} onScroll={scroll ? later : e => { e.currentTarget.scrollLeft = 0; e.currentTarget.scrollTop = 0; }}>
         {scroll ? <article className="flow">{content}
           <nav className="endnav">{ci > 0 && <button onClick={() => moveChapter(-1)}>이전 화</button>}{!lastChapter ? <button className="primary" onClick={() => moveChapter(1)}>다음 화</button> : <span>마지막 회차입니다</span>}</nav></article>
           : <div ref={flow} className={`flow pgflow anim-${page % 2}`} style={{ transform: `translateX(${-page * stride.current}px)` }}>{content}</div>}
       </div>
       {!scroll && <div className="foot"><span>{info(s.bottomInfo.left)}</span><span>{info(s.bottomInfo.right)}</span></div>}
       <div className="dim" style={{ opacity: (1 - s.brightness) * 0.8 }} />
-      {sel && !edit && !panel && <SelectionBar onColor={c => { const a = build(c); if (a) saveAnn(a); clearSel(); }} onMemo={() => { const a = build('yellow'); if (a) setEdit({ ann: a, isNew: true }); clearSel(); }} />}
+      {sel && !edit && !panel && <SelectionBar note={sel.clamped ? '첫 문단에만 적용돼요' : undefined} onColor={c => { const a = build(c); if (a) saveAnn(a); clearSel(); }} onMemo={() => { const a = build('yellow'); if (a) setEdit({ ann: a, isNew: true }); clearSel(); }} />}
       {edit && <MemoSheet key={edit.ann.id} ann={edit.ann} isNew={edit.isNew} onClose={() => setEdit(null)} onDelete={() => { delAnn(edit.ann.id); setEdit(null); }} onSave={a => { saveAnn(a); setEdit(null); }} />}
       {panel === 'notes' && <NotesPanel book={book} anns={anns} onGo={goTo} onClose={() => setPanel(null)} />}
       {panel === 'settings' && <SettingsPanel s={s} set={set} close={() => setPanel(null)} />}

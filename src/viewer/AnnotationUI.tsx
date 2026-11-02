@@ -9,10 +9,10 @@ export const renderSegs = (text: string, anns?: Annotation[]) =>
   segments(text, anns).map((s, i) => s.ann
     ? <mark key={i} data-a={s.ann.id} className={`hl hl-${s.ann.color}${s.ann.memo ? ' memo' : ''}`}>{s.text}</mark> : s.text);
 
-export function SelectionBar({ onColor, onMemo }: { onColor: (c: Annotation['color']) => void; onMemo: () => void }) {
+export function SelectionBar({ onColor, onMemo, note }: { onColor: (c: Annotation['color']) => void; onMemo: () => void; note?: string }) {
   return <div className="selbar" role="toolbar" aria-label="형광펜" onClick={e => e.stopPropagation()} onMouseDown={e => e.preventDefault()}>
     {COLORS.map(c => <button key={c} className={`dot hl-${c}`} aria-label={`${LABEL[c]} 형광펜`} onClick={() => onColor(c)} />)}
-    <button className="memo-btn" onClick={onMemo}>메모</button></div>;
+    <button className="memo-btn" onClick={onMemo}>메모</button>{note && <small className="selnote">{note}</small>}</div>;
 }
 
 export function MemoSheet({ ann, isNew, onSave, onDelete, onClose }: { ann: Annotation; isNew: boolean; onSave: (a: Annotation) => void; onDelete: () => void; onClose: () => void }) {

@@ -49,8 +49,23 @@ export interface LibraryRepository {
   saveState(s: ReadingState): Promise<void>;
   listBookmarks(bookId: string): Promise<Bookmark[]>;
   saveBookmark(b: Bookmark): Promise<void>;
+  listAnnotations(bookId: string): Promise<Annotation[]>;
+  saveAnnotation(a: Annotation): Promise<void>;
+  deleteAnnotation(bookId: string, id: string): Promise<void>;
 }
 
-// ---- 작가용 공유: 소유자(owner)만 ON/OFF. 작가(author)는 열람 전용 ----
-export type Role = 'owner' | 'author';
-export interface ShareLink { bookId: string; token: string; enabled: boolean; createdAt: number; expiresAt?: number }
+// ---- 권한: 편집자는 전체 관리, 작가는 본인에게 배정된 원고만 열람 ----
+export type Role = 'editor' | 'author';
+export interface User { id: string; name: string; role: Role }
+export interface Assignment {            // 작가별 원고 배정 + 공유 ON/OFF (편집자만 변경)
+  bookId: string; authorId: string; enabled: boolean; allowCopy: boolean; updatedAt: number;
+}
+
+// ---- 형광펜/메모 (작가가 작성, 편집자 열람 가능). 원고가 개정돼도 quote로 위치 재탐색 ----
+export interface Annotation {
+  id: string; bookId: string; authorId: string; chapterId: string;
+  blockIndex: number; start: number; end: number;   // 문단 내 글자 위치
+  quote: string;                                    // 선택 원문(개정본 재매칭용)
+  color: 'yellow' | 'green' | 'pink' | 'blue';
+  memo?: string; createdAt: number; updatedAt: number;
+}

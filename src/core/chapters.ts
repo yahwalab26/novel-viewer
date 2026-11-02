@@ -1,6 +1,6 @@
 import type { Block, Chapter } from './model';
-// 회차 제목 패턴: "12화", "제12화", "EP.12", "Episode 12", "프롤로그/에필로그/외전"
-export const CHAPTER_RE = /^\s*((제\s*)?\d+\s*(화|회|장)(?![가-힣]).*|EP\.?\s*\d+.*|Episode\s*\d+.*|프롤로그.*|에필로그.*|외전.*)$/i;
+// 회차 제목 패턴: "작품명 – 01", "12화", "제12화", "EP.12", "Episode 12", "프롤로그/에필로그/외전"
+export const CHAPTER_RE = /^\s*((제\s*)?\d+\s*(화|회|장)(?![가-힣]).*|EP\.?\s*\d+.*|Episode\s*\d+.*|프롤로그.*|에필로그.*|외전.*|.+\s[–—-]\s*\d{1,4})$/i;  // 마지막: "작품명 – 01" 형태
 export const countChars = (blocks: Block[]) =>
   blocks.reduce((n, b) => n + (b.type === 'p' || b.type === 'h' ? b.text.replace(/\s/g, '').length : 0), 0);
 export const mkChapter = (i: number, title: string, blocks: Block[]): Chapter =>

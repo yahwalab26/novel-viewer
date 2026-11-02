@@ -46,6 +46,12 @@ EPUB·DOCX·HWPX·HWP 파일을 등록해 읽는 웹소설 전용 뷰어. 모바
   - 파서 입력은 `ArrayBuffer` (UI는 `file.arrayBuffer()`로 전달). 사용: `parseFile(file)`.
   - 실행: `npm install && npm test` (일부 클라우드 폴더는 symlink 불가 → 로컬 디스크에서 실행)
 
+- 3.5단계: GitHub Pages 자동 배포(`docs/deploy.yml.txt`), 샘플 원고(`samples/`), 사용자 도메인 연결 안내.
+- 4단계: 형광펜 4색 + 메모. `viewer/anchor.ts`(위치 계산·개정 재탐색, 테스트 포함), `viewer/AnnotationUI.tsx`(선택 바·메모 시트·메모 목록). 저장은 로컬 IndexedDB(`ann:<bookId>`), `authorId='local'`.
+  - 사용: 글자를 길게 눌러(PC는 드래그) 선택 → 색 선택 또는 메모. 형광펜 탭 → 수정/삭제. 상단 '메모' → 전체 목록, 탭하면 해당 위치로 이동. 설정의 '형광펜 보기'로 숨김, '주석 팝업'은 탭 시 메모창 열림 여부.
+  - 제한: 한 문단 안에서만 선택 가능(여러 문단 선택은 미지원). 원고 개정 시 원문(quote)으로 위치를 다시 찾고, 못 찾으면 목록에서만 보임(고아 처리 UI는 6단계).
+  - 6단계에서 `RemoteRepository`가 같은 `Annotation`을 서버에 저장 → 편집자 열람은 RLS(편집자는 전체 읽기, 작가는 본인 것만 쓰기).
+
 ## 6-1. 뷰어 설정 명세 (참고 화면 기준, 3단계 구현)
 `src/core/settings.ts` 참조. 화면: 배경 7색, 밝기, 글꼴, 글자크기(1~10), 줄간격, 문단간격, 문단너비(1~5), 문단정렬, 형광펜. 읽기: 터치영역, 상하터치, 주석팝업, 하단정보, 넘김효과, 가로 두쪽보기, 스크롤보기, 밝기제스처, 회전고정, 화면켜짐. 스크롤 모드에서는 터치/넘김효과/하단정보/밝기제스처/두쪽보기 비활성.
 
@@ -66,6 +72,7 @@ EPUB·DOCX·HWPX·HWP 파일을 등록해 읽는 웹소설 전용 뷰어. 모바
 - 자동 배포: `main` 브랜치에 파일을 올리면 GitHub Actions가 빌드 → Pages 반영(1~2분). 워크플로 사본: `docs/deploy.yml.txt`.
 - 주소: `https://<GitHub아이디>.github.io/<저장소이름>/`
 - 원고는 서버에 올라가지 않고 각자 브라우저(IndexedDB)에만 저장됨. 저장소에 원고 파일을 올리지 말 것. 테스트용은 `samples/`의 가짜 원고만.
+- 커스텀 도메인: 기존 홈페이지/정산 사이트가 쓰는 `yahwalab.xyz`와 충돌하지 않도록 **서브도메인**(예: `viewer.yahwalab.xyz`) 사용. DNS에 `CNAME viewer → <GitHub아이디>.github.io` 추가 후 저장소 Settings → Pages → Custom domain 입력, HTTPS 강제 체크. 주소(origin)가 바뀌면 브라우저 저장소(IndexedDB)가 분리되므로 로컬 등록 원고는 새 주소에서 다시 등록해야 함.
 - Vite `base: './'` 설정으로 저장소 이름이 붙는 주소에서도 동작.
 - Supabase 키 주의: 공개 저장소에는 `anon` 키만 사용 가능(RLS 필수). `service_role` 키는 절대 커밋 금지.
 

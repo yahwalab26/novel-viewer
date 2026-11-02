@@ -21,3 +21,19 @@ chapters.forEach(([t, n], i) => {
 });
 ez.file('OEBPS/content.opf', `<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>샘플 작품</dc:title><dc:creator>테스트 작가</dc:creator><dc:identifier id="id">sample-1</dc:identifier><dc:language>ko</dc:language></metadata><manifest>${man}</manifest><spine>${spine}</spine></package>`);
 fs.writeFileSync('samples/샘플작품.epub', await ez.generateAsync({ type: 'nodebuffer' }));
+
+// HWPX (가상): 한컴 구조를 흉내낸 최소 파일. 표 속 문단, 줄바꿈, 개요 스타일, "– 01" 제목 포함
+const HP = (t, style = 0) => `<hp:p id="0" paraPrIDRef="0" styleIDRef="${style}"><hp:run charPrIDRef="0"><hp:t>${esc(t)}</hp:t></hp:run><hp:linesegarray><hp:lineseg textpos="0"/></hp:linesegarray></hp:p>`;
+let h = `<hp:p id="0" paraPrIDRef="0" styleIDRef="0"><hp:run charPrIDRef="0"><hp:secPr/><hp:ctrl><hp:colPr/></hp:ctrl></hp:run></hp:p>`;
+[['샘플 작품 – 01', 12], ['샘플 작품 – 02', 15], ['샘플 작품 – 03', 13]].forEach(([t, n], k) => {
+  h += HP(t) + HP('') + HP('');
+  body(n).forEach((p, i) => { h += p === null ? HP('***') : HP(p); if (i % 2) h += HP(''); });
+  if (k === 0) h += `<hp:p id="0" styleIDRef="0"><hp:run><hp:tbl><hp:tr><hp:tc><hp:subList>${HP('표 안의 문단')}</hp:subList></hp:tc></hp:tr></hp:tbl></hp:run></hp:p>`;
+  if (k === 1) h += `<hp:p id="0" styleIDRef="0"><hp:run><hp:t>줄바꿈<hp:lineBreak/>테스트</hp:t></hp:run></hp:p>`;
+});
+const NS = 'xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph" xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section" xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head" xmlns:opf="http://www.idpf.org/2007/opf/"';
+const xz = new JSZip(); xz.file('mimetype', 'application/hwp+zip', { compression: 'STORE' });
+xz.file('Contents/content.hpf', `<?xml version="1.0"?><opf:package ${NS}><opf:metadata><opf:title>샘플 HWPX 작품</opf:title><opf:meta name="creator" content="text">테스트 작가</opf:meta></opf:metadata><opf:manifest><opf:item id="header" href="Contents/header.xml" media-type="application/xml"/><opf:item id="section0" href="Contents/section0.xml" media-type="application/xml"/></opf:manifest><opf:spine><opf:itemref idref="header"/><opf:itemref idref="section0"/></opf:spine></opf:package>`);
+xz.file('Contents/header.xml', `<?xml version="1.0"?><hh:head ${NS}><hh:styles><hh:style id="0" type="PARA" name="바탕글"/><hh:style id="2" type="PARA" name="개요 1"/></hh:styles></hh:head>`);
+xz.file('Contents/section0.xml', `<?xml version="1.0" encoding="UTF-8"?><hs:sec ${NS}>${h}</hs:sec>`);
+fs.writeFileSync('samples/샘플원고.hwpx', await xz.generateAsync({ type: 'nodebuffer' }));

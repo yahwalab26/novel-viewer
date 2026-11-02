@@ -75,14 +75,15 @@ EPUB·DOCX·HWPX·HWP 파일을 등록해 읽는 웹소설 전용 뷰어. 모바
 - 편집자-작가 구조는 다계정이라 **서버(계정·권한)가 필수**. 권한은 DB(RLS)에서 강제하고 화면은 따라가기만 한다.
 - 형광펜/메모는 `Annotation`(문단 위치 + 원문 quote). 원고 개정 시 quote로 위치를 재탐색.
 
-## 6-2a. 서버 설계 (6-A)
+## 6-2a. 서버 설계 (6-A, schema v2)
 - 스택: Supabase(무료) = Auth(이메일/비밀번호) + Postgres(RLS) + Storage. 프론트는 GitHub Pages 그대로.
-- 스키마: `supabase/schema.sql` (v1). 테이블 `profiles`(역할), `books`, `book_contents`(파싱 JSON, revision), `assignments`(배정·공유 ON/OFF), `annotations`, `reading_states`, Storage `manuscripts`(원본, 편집자 전용·비공개).
-- 권한(전부 DB에서 강제): 로그인 전=접근 불가 / 작가=배정+공유ON 원고만, 본인 주석만 작성·수정·삭제 / 편집자=전체 관리, 모든 작가 주석 열람(수정 불가) / 역할 변경은 SQL로만.
-- 계정: 공개 가입 OFF. 편집자가 Supabase 대시보드에서 작가 계정 생성(Auto Confirm). 첫 편집자는 SQL로 role 지정.
-- 검증: `test/rls.test.ts`(PGlite로 시나리오 11개). **스키마를 바꾸면 반드시 이 테스트를 통과시킬 것.** 규칙을 일부러 깨 보는 변이 검사로 테스트가 위반을 잡는 것도 확인함.
-- 한계: `allow_copy`(복사 허용)는 화면 수준 억제일 뿐, 열람 권한이 있는 작가가 기술적으로 본문을 가져가는 것은 막을 수 없음. 공유 OFF 시 작가는 본문·주석 모두 즉시 못 보지만 주석 데이터는 보존(다시 ON하면 복구).
-- 코드 연결 계획: `LibraryRepository`의 `RemoteRepository` 구현을 추가(UI 변경 최소). 로컬 `Annotation.start/end` ↔ DB `start_pos/end_pos` 매핑. 책 id는 로컬은 파일 해시, 서버는 uuid(+`file_hash`로 중복 방지).
+- **전용 스키마 `viewer`**: 모든 테이블·함수가 `viewer` 안에 있어 기존 프로젝트에 얹어도 충돌 없음. `auth.users` 트리거 없음(뷰어 권한은 `viewer.profiles`에 있는 사람만). API 노출을 위해 대시보드 *Exposed schemas*에 `viewer` 추가 필요. 클라이언트는 `createClient(url, key, { db: { schema: 'viewer' } })`.
+- 스키마: `supabase/schema.sql`. 테이블 `profiles`(역할), `books`, `book_contents`(파싱 JSON, revision), `assignments`(배정·공유 ON/OFF), `annotations`, `reading_states`, Storage 버킷 `viewer-manuscripts`(원본, 편집자 전용·비공개). 함수 `is_editor()`, `can_read_book()`, `add_author(email, name)`(편집자만, 기존 계정에 작가 권한 부여).
+- 권한(전부 DB에서 강제): 로그인 전=스키마 접근권 자체가 없음 / 작가=배정+공유ON 원고만, 본인 주석만 작성·수정·삭제 / 편집자=전체 관리, 모든 작가 주석 열람(수정 불가) / 역할(role) 변경은 SQL로만.
+- 계정: 기존 Auth 계정 사용 가능. 첫 편집자는 SQL로 `viewer.profiles`에 role='editor' 등록.
+- 검증: `test/rls.test.ts`(PGlite, 시나리오 13개). **스키마를 바꾸면 반드시 통과시킬 것.** 규칙을 일부러 깨는 변이 검사 7종을 모두 잡아내는 것까지 확인함. (초기(v1) 테스트는 select 판정 오류·테이블명 누락으로 일부 변이를 못 잡았고, v2에서 수정함 — 테스트 자체도 변이 검사로 점검할 것.)
+- 한계: `allow_copy`(복사 허용)는 화면 수준 억제일 뿐, 열람 권한이 있는 작가가 기술적으로 본문을 가져가는 것은 막을 수 없음. 공유 OFF 시 작가는 본문·주석을 즉시 못 보지만 데이터는 보존(다시 ON하면 복구).
+- 코드 연결 계획: `LibraryRepository`의 `RemoteRepository` 구현 추가. 로컬 `Annotation.start/end` ↔ DB `start_pos/end_pos` 매핑. 책 id는 로컬은 파일 해시, 서버는 uuid(+`file_hash`로 중복 방지).
 - 설정 절차: `docs/SUPABASE_설정.md`.
 
 ## 6-3. 디바이스 대응 원칙

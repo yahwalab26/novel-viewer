@@ -45,3 +45,14 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
   .wrap{padding-left:40px;padding-right:40px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* 형광펜·메모 */
+mark.hl{color:inherit;border-radius:3px;padding:0 1px;cursor:pointer}
+.hl-yellow{background:rgba(255,214,10,.5)}.hl-green{background:rgba(76,217,100,.45)}.hl-pink{background:rgba(255,105,180,.4)}.hl-blue{background:rgba(70,160,255,.45)}
+mark.memo{border-bottom:2px dotted currentColor}
+.selbar{position:absolute;z-index:9;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 24px);display:flex;gap:10px;align-items:center;background:#171717;padding:10px 14px;border-radius:999px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.dot{width:34px;height:34px;border-radius:50%;border:2px solid #fff3;padding:0}.dot.sel{border:3px solid #fff}
+.memo-btn{background:#1a8cff;color:#fff;border:0;border-radius:999px;padding:0 16px;height:36px;font-weight:600}
+.sheet .quote{margin:14px 0 12px;padding:8px 12px;border-left:3px solid #1a8cff;color:#bbb;font-size:.9rem;max-height:90px;overflow:auto}
+.sheet textarea{width:100%;background:#262626;color:#eee;border:1px solid #3a3a3c;border-radius:10px;padding:12px;font:inherit;resize:vertical;margin-top:12px}
+.colors{display:flex;gap:12px}.actions{display:flex;justify-content:flex-end;gap:10px;margin:14px 0 4px}.danger{background:none;border:1px solid #c0392b;color:#ff6b5e;border-radius:10px;padding:0 16px;min-height:44px}
+.note{display:block;margin-top:6px;color:#bbb;font-size:.85rem;white-space:pre-wrap}.toc li button>span{flex:1;padding-right:12px}

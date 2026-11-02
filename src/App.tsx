@@ -24,7 +24,7 @@ export default function App() {
   };
   const read = async (id: string) => { const book = await repo.getBook(id); if (book) setOpen({ book, state: await repo.getState(id) }); };
 
-  if (open) return <Viewer book={open.book} state={open.state} settings={settings} onSettings={setSettings}
+  if (open) return <Viewer repo={repo} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
     onProgress={s => repo.saveState(s)} onClose={() => { setOpen(null); refresh(); }} />;
   return (
     <main className="lib" onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}

@@ -1,17 +1,21 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import type { Book, ReadingState } from '../core/model';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import type { Annotation, Book, LibraryRepository, ReadingState } from '../core/model';
+import { MemoSheet, NotesPanel, SelectionBar, renderSegs } from './AnnotationUI';
 import type { ViewerSettings } from '../core/settings';
 import SettingsPanel from './SettingsPanel';
 import { THEME_COLORS, FONT_SIZES, FONTS, WIDTHS, LH_DEFAULT, GAP_DEFAULT } from './theme';
 
-interface Props { book: Book; state: ReadingState | null; settings: ViewerSettings; onSettings: (s: ViewerSettings) => void; onProgress: (s: ReadingState) => void; onClose: () => void }
+interface Props { repo: LibraryRepository; book: Book; state: ReadingState | null; settings: ViewerSettings; onSettings: (s: ViewerSettings) => void; onProgress: (s: ReadingState) => void; onClose: () => void }
 
-export default function Viewer({ book, state, settings: s, onSettings, onProgress, onClose }: Props) {
+export default function Viewer({ repo, book, state, settings: s, onSettings, onProgress, onClose }: Props) {
   const [ci, setCi] = useState(() => Math.max(0, book.chapters.findIndex(c => c.id === state?.chapterId)));
   const [bar, setBar] = useState(true);
-  const [panel, setPanel] = useState<null | 'settings' | 'toc'>(null);
+  const [panel, setPanel] = useState<null | 'settings' | 'toc' | 'notes'>(null);
   const [page, setPage] = useState(0); const [pages, setPages] = useState(1);
   const [tick, setTick] = useState(0);
+  const [anns, setAnns] = useState<Annotation[]>([]);
+  const [sel, setSel] = useState<null | { i: number; start: number; end: number; quote: string }>(null);
+  const [edit, setEdit] = useState<null | { ann: Annotation; isNew: boolean }>(null);
   const [now, setNow] = useState(() => new Date());
   const wrap = useRef<HTMLDivElement>(null); const flow = useRef<HTMLDivElement>(null);
   const stride = useRef(1); const pending = useRef(state?.blockIndex ?? 0); const goLast = useRef(false);
@@ -88,6 +92,9 @@ export default function Viewer({ book, state, settings: s, onSettings, onProgres
   const tap = (e: React.MouseEvent) => {
     if (window.getSelection()?.toString()) return;                  // 선택(형광펜 준비) 중엔 무시
     if (panel) { setPanel(null); return; }
+    if (edit) { setEdit(null); return; }
+    const mk = (e.target as HTMLElement).closest<HTMLElement>('mark[data-a]');
+    if (mk && s.popupAnnotation) { const ann = anns.find(x => x.id === mk.dataset.a); if (ann) { setEdit({ ann, isNew: false }); return; } }
     const r = wrap.current!.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
     if (!scroll) {
       if (x < 0.3) return s.tapZones.left === 'prev' ? prev() : next();
@@ -103,6 +110,39 @@ export default function Viewer({ book, state, settings: s, onSettings, onProgres
   }, [s.keepScreenOn]);
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t); }, []);
 
+  // ── 형광펜·메모 (현재는 이 기기 로컬 저장, authorId='local')
+  useEffect(() => { repo.listAnnotations(book.id).then(setAnns); }, [repo, book.id]);
+  const byBlock = useMemo(() => {
+    const m = new Map<number, Annotation[]>();
+    if (s.highlight) for (const a of anns) if (a.chapterId === ch.id) m.set(a.blockIndex, [...(m.get(a.blockIndex) ?? []), a]);
+    return m;
+  }, [anns, ch.id, s.highlight]);
+  const saveAnn = (a: Annotation) => { setAnns(l => [...l.filter(x => x.id !== a.id), a]); repo.saveAnnotation(a); };
+  const delAnn = (id: string) => { setAnns(l => l.filter(x => x.id !== id)); repo.deleteAnnotation(book.id, id); };
+  const build = (color: Annotation['color']): Annotation | null => sel && ({ id: crypto.randomUUID(), bookId: book.id, authorId: 'local', chapterId: ch.id,
+    blockIndex: sel.i, start: sel.start, end: sel.end, quote: sel.quote, color, createdAt: Date.now(), updatedAt: Date.now() });
+  const clearSel = () => { window.getSelection()?.removeAllRanges(); setSel(null); };
+  useEffect(() => {
+    let t: number;
+    const h = () => {
+      const sl = window.getSelection(), root = wrap.current;
+      const drop = () => { clearTimeout(t); t = window.setTimeout(() => setSel(null), 600); };      // 버튼 탭 중 선택이 풀려도 잠시 유지
+      if (!sl || sl.isCollapsed || !sl.rangeCount || !root || !root.contains(sl.getRangeAt(0).commonAncestorContainer)) return drop();
+      const r = sl.getRangeAt(0), blk = (n: Node) => (n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest<HTMLElement>('[data-i]');
+      const a = blk(r.startContainer), b = blk(r.endContainer);
+      if (!a || a !== b || a.tagName !== 'P' || !r.toString().trim()) return drop();
+      const pre = document.createRange(); pre.selectNodeContents(a); pre.setEnd(r.startContainer, r.startOffset);
+      clearTimeout(t); const start = pre.toString().length, quote = r.toString();
+      setSel({ i: Number(a.dataset.i), start, end: start + quote.length, quote });
+    };
+    document.addEventListener('selectionchange', h); return () => { document.removeEventListener('selectionchange', h); clearTimeout(t); };
+  }, []);
+  const goTo = (idx: number, bi: number) => {
+    setPanel(null);
+    if (idx === ci) { const el = (flow.current ?? wrap.current)?.querySelector<HTMLElement>(`[data-i="${bi}"]`); if (!el) return; scroll ? el.scrollIntoView({ block: 'center' }) : setPage(Math.floor(el.offsetLeft / stride.current)); }
+    else { pending.current = bi; setPage(0); setCi(idx); }
+  };
+
   const th = THEME_COLORS[s.theme];
   const vars = {
     '--bg': th.bg, '--fg': th.fg, '--fs': FONT_SIZES[s.fontSizeLevel - 1] + 'px',
@@ -113,7 +153,7 @@ export default function Viewer({ book, state, settings: s, onSettings, onProgres
   const info = (k: string) => k === 'time' ? now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : k === 'chapter' ? ch.title : k === 'page' ? `${page + 1} / ${pages}` : k === 'percent' ? `${Math.round(((ci + (pages > 1 ? page / (pages - 1) : 0)) / book.chapters.length) * 100)}%` : '';
   const content = (<>
     <h2 className="ch-title">{ch.title}</h2>
-    {ch.blocks.map((b, i) => b.type === 'p' ? <p key={i} data-i={i}>{b.text}</p>
+    {ch.blocks.map((b, i) => b.type === 'p' ? <p key={i} data-i={i}>{renderSegs(b.text, byBlock.get(i))}</p>
       : b.type === 'h' ? <h3 key={i} data-i={i}>{b.text}</h3>
       : b.type === 'scene' ? <div key={i} data-i={i} className="scene" role="separator">◇</div> : null)}
   </>);
@@ -123,6 +163,7 @@ export default function Viewer({ book, state, settings: s, onSettings, onProgres
       <div className={'bar top' + (bar ? '' : ' hide')}>
         <button onClick={onClose} aria-label="서재로">‹</button><span className="ttl">{book.title}</span>
         <button onClick={() => setPanel(panel === 'toc' ? null : 'toc')}>목차</button>
+        <button onClick={() => setPanel(panel === 'notes' ? null : 'notes')}>메모{anns.length ? ` ${anns.length}` : ''}</button>
         <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')} aria-label="설정">Aa</button></div>
       <div ref={wrap} className="wrap" onClick={tap} onScroll={scroll ? later : undefined}>
         {scroll ? <article className="flow">{content}
@@ -131,6 +172,9 @@ export default function Viewer({ book, state, settings: s, onSettings, onProgres
       </div>
       {!scroll && <div className="foot"><span>{info(s.bottomInfo.left)}</span><span>{info(s.bottomInfo.right)}</span></div>}
       <div className="dim" style={{ opacity: (1 - s.brightness) * 0.8 }} />
+      {sel && !edit && !panel && <SelectionBar onColor={c => { const a = build(c); if (a) saveAnn(a); clearSel(); }} onMemo={() => { const a = build('yellow'); if (a) setEdit({ ann: a, isNew: true }); clearSel(); }} />}
+      {edit && <MemoSheet key={edit.ann.id} ann={edit.ann} isNew={edit.isNew} onClose={() => setEdit(null)} onDelete={() => { delAnn(edit.ann.id); setEdit(null); }} onSave={a => { saveAnn(a); setEdit(null); }} />}
+      {panel === 'notes' && <NotesPanel book={book} anns={anns} onGo={goTo} onClose={() => setPanel(null)} />}
       {panel === 'settings' && <SettingsPanel s={s} set={set} close={() => setPanel(null)} />}
       {panel === 'toc' && <div className="panel toc" role="dialog" aria-label="목차" onClick={e => e.stopPropagation()}>
         <div className="phead"><b>목차 ({book.chapters.length}회차)</b><button className="link" onClick={() => setPanel(null)}>닫기</button></div>

@@ -44,6 +44,7 @@ export default function App() {
             <span>{b.chapterCount}회차 · {(b.charCount / 1000).toFixed(1)}천자</span></button>
             <button className="ghost" aria-label={`${b.title} 삭제`} onClick={async () => { if (confirm(`‘${b.title}’을 삭제할까요?`)) { await repo.deleteBook(b.id); refresh(); } }}>삭제</button></li>))}</ul>
       )}
+    <footer className="ver">웹소설 뷰어 v{__APP_VERSION__}</footer>
     </main>
   );
 }

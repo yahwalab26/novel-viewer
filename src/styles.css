@@ -56,3 +56,5 @@ mark.memo{border-bottom:2px dotted currentColor}
 .sheet textarea{width:100%;background:#262626;color:#eee;border:1px solid #3a3a3c;border-radius:10px;padding:12px;font:inherit;resize:vertical;margin-top:12px}
 .colors{display:flex;gap:12px}.actions{display:flex;justify-content:flex-end;gap:10px;margin:14px 0 4px}.danger{background:none;border:1px solid #c0392b;color:#ff6b5e;border-radius:10px;padding:0 16px;min-height:44px}
 .note{display:block;margin-top:6px;color:#bbb;font-size:.85rem;white-space:pre-wrap}.toc li button>span{flex:1;padding-right:12px}
+.selnote{color:#bbb;font-size:.75rem;margin-left:4px}
+.ver{text-align:center;color:#999;font-size:.75rem;margin:32px 0 8px}

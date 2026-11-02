@@ -36,7 +36,7 @@ export default function App() {
       {msg && <p className="err" role="alert">{msg}</p>}
       {list.length === 0 ? (
         <div className={'drop' + (drag ? ' on' : '')}><p>EPUB · DOCX 파일을 끌어놓거나<br />‘원고 등록’을 눌러주세요</p>
-          <small>지원 예정: HWPX, HWP · 파일은 이 기기 안에만 저장됩니다 (지금 지원: {SUPPORTED.join(', ')})</small></div>
+          <small>지원 예정: HWP · 파일은 이 기기 안에만 저장됩니다 (지금 지원: {SUPPORTED.join(', ')})</small></div>
       ) : (
         <ul className="books">{list.map(b => (
           <li key={b.id}><button className="card" onClick={() => read(b.id)}>

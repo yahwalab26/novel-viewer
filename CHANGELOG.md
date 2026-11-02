@@ -7,7 +7,8 @@
 - 버전은 `package.json`의 `version` 한 곳만 고치면 화면(서재 하단, 설정 패널 하단)에 자동 반영된다.
 
 ## (준비중) 6-A 서버 설계 — 앱 버전 변경 없음
-- 추가: `supabase/schema.sql`(DB·권한 규칙), `test/rls.test.ts`(권한 시나리오 11개), `docs/SUPABASE_설정.md`
+- 추가: `supabase/schema.sql` v2 (전용 스키마 `viewer`, 기존 Supabase 프로젝트에 안전하게 설치 가능, `add_author` 함수)
+- 추가: `test/rls.test.ts` 권한 시나리오 13개 (변이 검사로 테스트 자체를 점검), `docs/SUPABASE_설정.md`
 - 개발 의존성 추가: `@electric-sql/pglite` (테스트 전용, 앱에는 포함되지 않음)
 
 ## 0.5.0

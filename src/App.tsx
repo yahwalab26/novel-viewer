@@ -1,50 +1,47 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { parseFile, SUPPORTED } from './parsers';
-import { localRepo as repo, loadSettings, persistSettings } from './store/repo';
-import { DEFAULT_SETTINGS, type ViewerSettings } from './core/settings';
-import type { Book, BookSummary, ReadingState } from './core/model';
-import Viewer from './viewer/Viewer';
+import type { Session } from '@supabase/supabase-js';
+import { createApi } from './server/api';
+import type { Access } from './server/access';
+import Library from './Library';
+import { AccountBar, Login, Notice } from './Auth';
+
+const api = createApi();
+type State = { phase: 'loading' } | { phase: 'out' } | { phase: 'in'; email: string; access: Access };
 
 export default function App() {
-  const [list, setList] = useState<BookSummary[]>([]);
-  const [open, setOpen] = useState<{ book: Book; state: ReadingState | null } | null>(null);
-  const [settings, setSettings] = useState<ViewerSettings>(() => loadSettings(DEFAULT_SETTINGS));
-  const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false); const [drag, setDrag] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
-  const refresh = useCallback(async () => setList(await repo.listBooks()), []);
-  useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => persistSettings(settings), [settings]);
+  const [state, setState] = useState<State>({ phase: 'loading' });
+  const uid = useRef<string | null>(null);
 
-  const add = async (files: FileList | File[]) => {
-    setBusy(true); setMsg('');
-    for (const f of Array.from(files)) {
-      try { await repo.saveBook(await parseFile(f), f); } catch (e) { setMsg(`${f.name}: ${(e as Error).message}`); }
-    }
-    setBusy(false); refresh();
-  };
-  const read = async (id: string) => { const book = await repo.getBook(id); if (book) setOpen({ book, state: await repo.getState(id) }); };
+  const apply = useCallback(async (s: Session | null) => {
+    if (!s) { uid.current = null; setState({ phase: 'out' }); return; }
+    if (uid.current === s.user.id) return;                 // 토큰 갱신 등으로 같은 사용자가 반복 통지돼도 다시 불러오지 않음
+    uid.current = s.user.id; setState({ phase: 'loading' });
+    setState({ phase: 'in', email: s.user.email ?? '', access: await api.loadAccess(s.user.id) });
+  }, []);
+  useEffect(() => {
+    api.session().then(apply);
+    const { data: { subscription } } = api.onAuth(s => setTimeout(() => apply(s), 0));   // 콜백 안에서 직접 서버 호출 금지(교착 방지)
+    return () => subscription.unsubscribe();
+  }, [apply]);
 
-  if (open) return <Viewer repo={repo} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
-    onProgress={s => repo.saveState(s)} onClose={() => { setOpen(null); refresh(); }} />;
-  return (
-    <main className="lib" onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
-      onDrop={e => { e.preventDefault(); setDrag(false); add(e.dataTransfer.files); }}>
-      <header><h1>내 서재</h1>
-        <button className="primary" onClick={() => input.current?.click()} disabled={busy}>{busy ? '등록 중…' : '+ 원고 등록'}</button>
-        <input ref={input} type="file" hidden multiple accept=".epub,.docx,.hwpx,.hwp" onChange={e => e.target.files && add(e.target.files)} />
-      </header>
-      {msg && <p className="err" role="alert">{msg}</p>}
-      {list.length === 0 ? (
-        <div className={'drop' + (drag ? ' on' : '')}><p>EPUB · DOCX 파일을 끌어놓거나<br />‘원고 등록’을 눌러주세요</p>
-          <small>지원 예정: HWP · 파일은 이 기기 안에만 저장됩니다 (지금 지원: {SUPPORTED.join(', ')})</small></div>
-      ) : (
-        <ul className="books">{list.map(b => (
-          <li key={b.id}><button className="card" onClick={() => read(b.id)}>
-            <strong>{b.title}</strong><span>{b.author ?? '작가 미상'} · {b.format.toUpperCase()}</span>
-            <span>{b.chapterCount}회차 · {(b.charCount / 1000).toFixed(1)}천자</span></button>
-            <button className="ghost" aria-label={`${b.title} 삭제`} onClick={async () => { if (confirm(`‘${b.title}’을 삭제할까요?`)) { await repo.deleteBook(b.id); refresh(); } }}>삭제</button></li>))}</ul>
-      )}
-    <footer className="ver">웹소설 뷰어 v{__APP_VERSION__}</footer>
-    </main>
-  );
+  const logout = () => { api.signOut(); };
+  const retry = () => { uid.current = null; api.session().then(apply); };
+
+  if (state.phase === 'loading') return <main className="auth"><p className="sub">불러오는 중…</p></main>;
+  if (state.phase === 'out') return <Login api={api} />;
+  const a = state.access;
+  switch (a.kind) {
+    case 'editor': return <Library account={{ name: a.name, email: a.email || state.email, role: 'editor' }} onLogout={logout} />;
+    case 'author': return (
+      <main className="lib">
+        <AccountBar account={{ name: a.name, email: a.email || state.email, role: 'author' }} onLogout={logout} />
+        <h1>내 원고</h1>
+        <div className="drop"><p>배정된 원고가 없습니다</p><small>편집자가 원고를 배정하면 여기에 나타납니다 (열람 기능은 다음 단계에서 추가됩니다)</small></div>
+        <footer className="ver">웹소설 뷰어 v{__APP_VERSION__}</footer>
+      </main>);
+    case 'none': return <Notice title="이용 권한이 없습니다" onLogout={logout}>이 계정({state.email})은 아직 뷰어 권한이 없습니다. 편집자에게 권한 부여를 요청해 주세요.</Notice>;
+    case 'schema-not-exposed': return <Notice title="서버 설정이 필요합니다" onLogout={logout} onRetry={retry}>
+      Supabase의 <b>Project Settings → API → Exposed schemas</b>에 <code>viewer</code>를 추가한 뒤 다시 시도해 주세요.</Notice>;
+    default: return <Notice title="서버 연결 오류" onLogout={logout} onRetry={retry}>{a.message}</Notice>;
+  }
 }

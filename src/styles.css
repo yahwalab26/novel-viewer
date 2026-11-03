@@ -58,3 +58,12 @@ mark.memo{border-bottom:2px dotted currentColor}
 .note{display:block;margin-top:6px;color:#bbb;font-size:.85rem;white-space:pre-wrap}.toc li button>span{flex:1;padding-right:12px}
 .selnote{color:#bbb;font-size:.75rem;margin-left:4px}
 .ver{text-align:center;color:#999;font-size:.75rem;margin:32px 0 8px}
+/* 로그인·계정 */
+.auth{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px;color:#555}
+.card-auth{width:100%;max-width:380px;background:#fff;border:1px solid #e3dfd3;border-radius:18px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.card-auth h1{font-size:1.4rem;margin:0}.sub{margin:0;color:#777}
+.card-auth label{display:flex;flex-direction:column;gap:6px;font-size:.9rem;color:#555}
+.card-auth input{font:inherit;padding:12px;border:1px solid #cfc9b8;border-radius:10px;min-height:46px;background:#fff;color:#222}
+.card-auth .ver{margin:4px 0 0}.notice{line-height:1.7;color:#444;word-break:keep-all}.row2{display:flex;justify-content:space-between;align-items:center}
+.acct{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-bottom:10px;font-size:.9rem}.acct .who{color:#555}
+.badge{font-size:.72rem;font-weight:700;border-radius:999px;padding:3px 9px;color:#fff}.badge.editor{background:#1a8cff}.badge.author{background:#2f9e6b}

@@ -35,8 +35,8 @@ EPUB·DOCX·HWPX·HWP 파일을 등록해 읽는 웹소설 전용 뷰어. 모바
 | 3 | 뷰어 화면 (서재·읽기·설정·목차, 로컬) | 0.3.x | 완료 |
 | 4 | 형광펜·메모 (로컬) | 0.4.x | 완료 |
 | 5 | HWPX 파서 | 0.5.0 | 구현 완료, 확인 대기 |
-| 6-A | 서버 설계: DB·권한 규칙(RLS)·검증 테스트, Supabase 준비 | - | SQL 완료, 사용자 설정 대기 |
-| 6-B | 로그인(이메일/비밀번호)·역할 표시·화면 분기 | 0.6.0 | - |
+| 6-A | 서버 설계: DB·권한 규칙(RLS)·검증 테스트, Supabase 준비 | - | 완료(프로젝트 설정·계정 등록 확인) |
+| 6-B | 로그인(이메일/비밀번호)·역할 표시·화면 분기 | 0.6.0 | 구현 완료, 확인 대기 |
 | 6-C | 편집자: 원고 서버 업로드·작가 배정·공유 ON/OFF 관리 | 0.7.0 | - |
 | 6-D | 작가: 배정 원고 열람·주석/이어읽기 동기화, 편집자의 주석 열람 | 0.8.0 | - |
 | 7 | 서재 다듬기(검색·북마크)·PWA 설치 | 0.9.0 | - |
@@ -46,7 +46,7 @@ EPUB·DOCX·HWPX·HWP 파일을 등록해 읽는 웹소설 전용 뷰어. 모바
 후순위 백로그: 여러 문단에 걸친 형광펜, 메모 공개 범위 선택, 글자수 통계, 고아 주석 처리 화면.
 
 ## 5-1. 버전 규칙
-`CHANGELOG.md` 참조. `package.json`의 version만 수정하면 화면에 반영. 현재 0.5.0.
+`CHANGELOG.md` 참조. `package.json`의 version만 수정하면 화면에 반영. 현재 0.6.0.
 
 ## 6. 작업 로그
 - 1단계: 데이터 모델 초안, 가이드 v0 작성.
@@ -80,11 +80,18 @@ EPUB·DOCX·HWPX·HWP 파일을 등록해 읽는 웹소설 전용 뷰어. 모바
 - **전용 스키마 `viewer`**: 모든 테이블·함수가 `viewer` 안에 있어 기존 프로젝트에 얹어도 충돌 없음. `auth.users` 트리거 없음(뷰어 권한은 `viewer.profiles`에 있는 사람만). API 노출을 위해 대시보드 *Exposed schemas*에 `viewer` 추가 필요. 클라이언트는 `createClient(url, key, { db: { schema: 'viewer' } })`.
 - 스키마: `supabase/schema.sql`. 테이블 `profiles`(역할), `books`, `book_contents`(파싱 JSON, revision), `assignments`(배정·공유 ON/OFF), `annotations`, `reading_states`, Storage 버킷 `viewer-manuscripts`(원본, 편집자 전용·비공개). 함수 `is_editor()`, `can_read_book()`, `add_author(email, name)`(편집자만, 기존 계정에 작가 권한 부여).
 - 권한(전부 DB에서 강제): 로그인 전=스키마 접근권 자체가 없음 / 작가=배정+공유ON 원고만, 본인 주석만 작성·수정·삭제 / 편집자=전체 관리, 모든 작가 주석 열람(수정 불가) / 역할(role) 변경은 SQL로만.
-- 계정: 기존 Auth 계정 사용 가능. 첫 편집자는 SQL로 `viewer.profiles`에 role='editor' 등록.
+- 계정: 기존 Auth 계정 사용 가능. **SQL Editor에서는 `auth.uid()`가 없어 `add_author()`가 거부됨 → `viewer.profiles`에 직접 insert**(앱 화면 6-C에서는 `add_author` 사용). 첫 편집자는 SQL로 `viewer.profiles`에 role='editor' 등록.
 - 검증: `test/rls.test.ts`(PGlite, 시나리오 13개). **스키마를 바꾸면 반드시 통과시킬 것.** 규칙을 일부러 깨는 변이 검사 7종을 모두 잡아내는 것까지 확인함. (초기(v1) 테스트는 select 판정 오류·테이블명 누락으로 일부 변이를 못 잡았고, v2에서 수정함 — 테스트 자체도 변이 검사로 점검할 것.)
 - 한계: `allow_copy`(복사 허용)는 화면 수준 억제일 뿐, 열람 권한이 있는 작가가 기술적으로 본문을 가져가는 것은 막을 수 없음. 공유 OFF 시 작가는 본문·주석을 즉시 못 보지만 데이터는 보존(다시 ON하면 복구).
 - 코드 연결 계획: `LibraryRepository`의 `RemoteRepository` 구현 추가. 로컬 `Annotation.start/end` ↔ DB `start_pos/end_pos` 매핑. 책 id는 로컬은 파일 해시, 서버는 uuid(+`file_hash`로 중복 방지).
 - 설정 절차: `docs/SUPABASE_설정.md`.
+
+## 6-2b. 로그인·역할별 화면 (6-B, 0.6.0)
+- 흐름: `App.tsx`가 세션을 감시 → 로그인 안 됨=`Login` / 로그인됨=`viewer.profiles`에서 내 역할 조회(`server/api.ts` → `access.ts`로 판정) → editor=`Library`(기존 서재) / author=작가 홈(배정 원고 없음 안내, 열람은 6-D) / none=권한 없음 / schema-not-exposed=Exposed schemas 안내 / error=오류+다시 시도.
+- 서버 접근은 전부 `server/api.ts` 한 곳. 뷰어 데이터는 `viewer` 스키마(`Accept-Profile: viewer` 헤더, 테스트로 검증).
+- 설정값: `src/config.ts`(프로젝트 URL·publishable 키 — 공개 가능). **secret/service_role 키는 절대 넣지 않는다.**
+- 주의: `onAuthStateChange` 콜백 안에서 직접 서버 호출 금지(교착) → `setTimeout`으로 분리. 같은 사용자의 토큰 갱신 통지는 무시(`uid` ref).
+- 공용 기기: 로컬 서재(IndexedDB)는 기기·브라우저 단위로 남는다. 로그아웃해도 편집자가 등록한 로컬 원고는 그 브라우저에 남아 있음(서버 업로드 전환은 6-C).
 
 ## 6-3. 디바이스 대응 원칙
 - 반응형 3구간: 모바일(<600px) 1단, 태블릿(600~1024px) 가로 시 두쪽보기, PC(>1024px) 본문 중앙 + 좌측 목차 패널.

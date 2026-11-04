@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import type { Annotation, AnnotationStore, Book, ReadingState } from '../core/model';
+import type { Annotation, AnnotationStore, Book, Bookmark, BookmarkStore, ReadingState } from '../core/model';
 import { readSelection, type Picked } from './selection';
 import { filterAnns, installProtection, isMine } from './protect';
 import { MemoSheet, NotesPanel, SelectionBar, renderSegs } from './AnnotationUI';
 import type { ViewerSettings } from '../core/settings';
 import SettingsPanel from './SettingsPanel';
+import NavPanel from './NavPanel';
 import { THEME_COLORS, FONT_SIZES, FONTS, WIDTHS, LH_DEFAULT, GAP_DEFAULT } from './theme';
 
-interface Props { repo: AnnotationStore; meId?: string; names?: Record<string, string>; protect?: boolean; book: Book; state: ReadingState | null; settings: ViewerSettings; onSettings: (s: ViewerSettings) => void; onProgress: (s: ReadingState) => void; onClose: () => void }
+interface Props { repo: AnnotationStore & BookmarkStore; meId?: string; names?: Record<string, string>; protect?: boolean; book: Book; state: ReadingState | null; settings: ViewerSettings; onSettings: (s: ViewerSettings) => void; onProgress: (s: ReadingState) => void; onClose: () => void }
 
 export default function Viewer({ repo, meId, names, protect, book, state, settings: s, onSettings, onProgress, onClose }: Props) {
   const [ci, setCi] = useState(() => Math.max(0, book.chapters.findIndex(c => c.id === state?.chapterId)));
@@ -18,6 +19,8 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   const [anns, setAnns] = useState<Annotation[]>([]);
   const [sel, setSel] = useState<null | Picked>(null);
   const [edit, setEdit] = useState<null | { ann: Annotation; isNew: boolean; readOnly?: boolean }>(null);
+  const [bms, setBms] = useState<Bookmark[]>([]);
+  const [toast, setToast] = useState('');
   const [who, setWho] = useState('all');                  // 표시할 형광펜: all | mine | 작가 id
   const [now, setNow] = useState(() => new Date());
   const wrap = useRef<HTMLDivElement>(null); const flow = useRef<HTMLDivElement>(null);
@@ -61,13 +64,16 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   }, [scroll, ci]);
 
   // ── 진행 저장
+  const currentBlock = useCallback((): number => {            // 지금 화면 맨 위(또는 쪽 시작)에 보이는 문단 번호
+    const f = flow.current ?? wrap.current; if (!f) return 0;
+    const kids = Array.from(f.querySelectorAll<HTMLElement>('[data-i]'));
+    if (scroll) { const top = wrap.current!.getBoundingClientRect().top + 8; return Number(kids.find(k => k.getBoundingClientRect().bottom > top)?.dataset.i ?? 0); }
+    return Number(kids.find(k => k.offsetLeft >= page * stride.current - 1)?.dataset.i ?? 0);
+  }, [scroll, page]);
   const save = useCallback(() => {
-    const f = flow.current ?? wrap.current; if (!f) return;
-    const kids = Array.from(f.querySelectorAll<HTMLElement>('[data-i]')); let idx = 0;
-    if (scroll) { const top = wrap.current!.getBoundingClientRect().top + 8; idx = Number(kids.find(k => k.getBoundingClientRect().bottom > top)?.dataset.i ?? 0); }
-    else idx = Number(kids.find(k => k.offsetLeft >= page * stride.current - 1)?.dataset.i ?? 0);
-    onProgress({ bookId: book.id, chapterId: ch.id, blockIndex: idx, updatedAt: Date.now() });
-  }, [scroll, page, ch.id, book.id, onProgress]);
+    if (!(flow.current ?? wrap.current)) return;
+    onProgress({ bookId: book.id, chapterId: ch.id, blockIndex: currentBlock(), updatedAt: Date.now() });
+  }, [currentBlock, ch.id, book.id, onProgress]);
   const timer = useRef<number>();
   const later = () => { clearTimeout(timer.current); timer.current = window.setTimeout(save, 500); };
   useEffect(later, [ci, page, scroll]); // eslint-disable-line
@@ -135,6 +141,18 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     };
     document.addEventListener('selectionchange', h); return () => { document.removeEventListener('selectionchange', h); clearTimeout(t); };
   }, []);
+  // ── 북마크 (같은 위치에서 다시 누르면 삭제)
+  useEffect(() => { repo.listBookmarks(book.id).then(setBms); }, [repo, book.id]);
+  const say = (m: string) => { setToast(m); window.setTimeout(() => setToast(''), 1800); };
+  const delBookmark = (id: string) => { setBms(l => l.filter(x => x.id !== id)); repo.deleteBookmark(book.id, id).catch(() => say('북마크 삭제에 실패했어요')); };
+  const toggleBookmark = () => {
+    const bi = currentBlock(), ex = bms.find(b => b.chapterId === ch.id && b.blockIndex === bi);
+    if (ex) { delBookmark(ex.id); say('북마크를 삭제했어요'); return; }
+    const blk = ch.blocks[bi], label = blk && (blk.type === 'p' || blk.type === 'h') ? blk.text.replace(/\s+/g, ' ').trim().slice(0, 40) : '';
+    const bm: Bookmark = { id: crypto.randomUUID(), bookId: book.id, chapterId: ch.id, blockIndex: bi, label, createdAt: Date.now() };
+    setBms(l => [...l, bm]); say('북마크를 추가했어요');
+    repo.saveBookmark(bm).catch(() => { setBms(l => l.filter(x => x.id !== bm.id)); say('북마크 저장에 실패했어요 (서버 설정을 확인해 주세요)'); });
+  };
   const goTo = (idx: number, bi: number) => {
     setPanel(null);
     if (idx === ci) { const el = (flow.current ?? wrap.current)?.querySelector<HTMLElement>(`[data-i="${bi}"]`); if (!el) return; scroll ? el.scrollIntoView({ block: 'center' }) : setPage(Math.floor(el.offsetLeft / stride.current)); }
@@ -160,6 +178,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}`} style={vars}>
       <div className={'bar top' + (bar ? '' : ' hide')}>
         <button onClick={onClose} aria-label="서재로">‹</button><span className="ttl">{book.title}</span>
+        <button onClick={toggleBookmark} aria-label="현재 위치 북마크 추가/삭제">★</button>
         <button onClick={() => setPanel(panel === 'toc' ? null : 'toc')}>목차</button>
         <button onClick={() => setPanel(panel === 'notes' ? null : 'notes')}>메모{anns.length ? ` ${anns.length}` : ''}</button>
         <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')} aria-label="설정">Aa</button></div>
@@ -174,10 +193,9 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
       {edit && <MemoSheet key={edit.ann.id} ann={edit.ann} isNew={edit.isNew} readOnly={edit.readOnly} authorName={names?.[edit.ann.authorId]} onClose={() => setEdit(null)} onDelete={() => { delAnn(edit.ann.id); setEdit(null); }} onSave={a => { saveAnn(a); setEdit(null); }} />}
       {panel === 'notes' && <NotesPanel book={book} anns={anns} who={who} onWho={setWho} meId={meId} names={names} onGo={goTo} onClose={() => setPanel(null)} />}
       {panel === 'settings' && <SettingsPanel s={s} set={set} close={() => setPanel(null)} />}
-      {panel === 'toc' && <div className="panel toc" role="dialog" aria-label="목차" onClick={e => e.stopPropagation()}>
-        <div className="phead"><b>목차 ({book.chapters.length}회차)</b><button className="link" onClick={() => setPanel(null)}>닫기</button></div>
-        <ol className="pbody">{book.chapters.map((c, i) => <li key={c.id}><button className={i === ci ? 'cur' : ''} onClick={() => { pending.current = 0; setPage(0); setCi(i); setPanel(null); }}>
-          <span>{c.title}</span><small>{c.charCount.toLocaleString()}자</small></button></li>)}</ol></div>}
+      {panel === 'toc' && <NavPanel book={book} ci={ci} bookmarks={bms} onClose={() => setPanel(null)} onGo={goTo} onDeleteBookmark={delBookmark}
+        onChapter={i => { pending.current = 0; setPage(0); setCi(i); setPanel(null); }} />}
+      {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );
 }

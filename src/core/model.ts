@@ -24,7 +24,7 @@ export type BookSummary = Omit<Book, 'chapters'> & { chapterCount: number; charC
 export interface ReadingState {   // 이어읽기
   bookId: string; chapterId: string; blockIndex: number; updatedAt: number;
 }
-export interface Bookmark { id: string; bookId: string; chapterId: string; blockIndex: number; memo?: string; createdAt: number }
+export interface Bookmark { id: string; bookId: string; chapterId: string; blockIndex: number; label?: string; createdAt: number }
 
 export interface ViewerSettings {
   theme: 'light' | 'dark' | 'sepia';
@@ -40,6 +40,7 @@ export interface Parser {
 }
 
 // 뷰어가 필요로 하는 최소 저장소(형광펜). 로컬/서버 저장소가 모두 만족한다.
+export type BookmarkStore = Pick<LibraryRepository, 'listBookmarks' | 'saveBookmark' | 'deleteBookmark'>;
 export type AnnotationStore = Pick<LibraryRepository, 'listAnnotations' | 'saveAnnotation' | 'deleteAnnotation'>;
 
 // ---- 확장 지점 2: 저장소 (지금 Local, 나중에 Remote로 교체) ----
@@ -52,6 +53,7 @@ export interface LibraryRepository {
   saveState(s: ReadingState): Promise<void>;
   listBookmarks(bookId: string): Promise<Bookmark[]>;
   saveBookmark(b: Bookmark): Promise<void>;
+  deleteBookmark(bookId: string, id: string): Promise<void>;
   listAnnotations(bookId: string): Promise<Annotation[]>;
   saveAnnotation(a: Annotation): Promise<void>;
   deleteAnnotation(bookId: string, id: string): Promise<void>;

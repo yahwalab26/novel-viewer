@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Annotation, Book, Chapter, Format, ReadingState, AnnotationStore } from '../core/model';
+import type { Annotation, Book, Bookmark, BookmarkStore, Chapter, Format, ReadingState, AnnotationStore } from '../core/model';
 
 export type Sb = SupabaseClient<any, 'viewer'>;
 export const BUCKET = 'viewer-manuscripts';
@@ -79,12 +79,19 @@ export function createBooksApi(sb: Sb) {
 export const annToRow = (a: Annotation) => ({ id: a.id, book_id: a.bookId, chapter_id: a.chapterId, block_index: a.blockIndex, start_pos: a.start, end_pos: a.end, quote: a.quote, color: a.color, memo: a.memo ?? null, created_at: new Date(a.createdAt).toISOString(), updated_at: new Date(a.updatedAt).toISOString() });
 export const rowToAnn = (r: any): Annotation => ({ id: r.id, bookId: r.book_id, authorId: r.author_id, chapterId: r.chapter_id, blockIndex: r.block_index, start: r.start_pos, end: r.end_pos, quote: r.quote, color: r.color, memo: r.memo ?? undefined, createdAt: Date.parse(r.created_at), updatedAt: Date.parse(r.updated_at) });
 
-export function createRemoteRepo(sb: Sb): AnnotationStore & { getState(bookId: string): Promise<ReadingState | null>; saveState(s: ReadingState): Promise<void> } {
+export const bmToRow = (b: Bookmark) => ({ id: b.id, book_id: b.bookId, chapter_id: b.chapterId, block_index: b.blockIndex, label: b.label ?? null, created_at: new Date(b.createdAt).toISOString() });
+export const rowToBm = (r: any): Bookmark => ({ id: r.id, bookId: r.book_id, chapterId: r.chapter_id, blockIndex: r.block_index, label: r.label ?? undefined, createdAt: Date.parse(r.created_at) });
+
+export function createRemoteRepo(sb: Sb): AnnotationStore & BookmarkStore & { getState(bookId: string): Promise<ReadingState | null>; saveState(s: ReadingState): Promise<void> } {
   const log = (what: string, e: unknown) => console.error(`[서버 저장 실패] ${what}`, e);
   return {
     async listAnnotations(bookId) { const { data, error } = await sb.from('annotations').select('*').eq('book_id', bookId); if (error) { log('주석 조회', error); return []; } return (data ?? []).map(rowToAnn); },
     async saveAnnotation(a) { const { error } = await sb.from('annotations').upsert(annToRow(a), { onConflict: 'id' }); if (error) log('주석 저장', error); },
     async deleteAnnotation(_bookId, id) { const { error } = await sb.from('annotations').delete().eq('id', id); if (error) log('주석 삭제', error); },
+    // 북마크는 실패를 호출자에게 알린다(서버 설정 누락을 사용자가 알 수 있도록)
+    async listBookmarks(bookId) { const { data, error } = await sb.from('bookmarks').select('*').eq('book_id', bookId).order('created_at'); if (error) { log('북마크 조회', error); return []; } return (data ?? []).map(rowToBm); },
+    async saveBookmark(bm) { const { error } = await sb.from('bookmarks').upsert(bmToRow(bm), { onConflict: 'id' }); if (error) throw new Error(error.message); },
+    async deleteBookmark(_bookId, id) { const { error } = await sb.from('bookmarks').delete().eq('id', id); if (error) throw new Error(error.message); },
     async getState(bookId) {
       const { data } = await sb.from('reading_states').select('book_id,chapter_id,block_index,updated_at').eq('book_id', bookId).maybeSingle();
       return data ? { bookId: data.book_id, chapterId: data.chapter_id, blockIndex: data.block_index, updatedAt: Date.parse(data.updated_at) } : null;

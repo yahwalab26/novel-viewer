@@ -81,3 +81,10 @@ mark.memo{border-bottom:2px dotted currentColor}
 .aopts{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.opt{display:flex;align-items:center;gap:8px;font-size:.85rem}.primary.sm{min-height:38px;padding:.4em .9em;font-size:.9rem}
 .addauthor{margin-top:20px}.addrow{display:flex;gap:8px}.addrow input{flex:1;font:inherit;padding:10px;border:1px solid #cfc9b8;border-radius:10px;min-height:44px}
 @media (min-width:700px){.modal{align-items:center}.sheetbox{border-radius:18px}}
+/* 작가 메모 구분·복사 방지 */
+mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
+.byauthor{display:inline-block;font-size:.72rem;background:#2f9e6b;color:#fff;border-radius:999px;padding:1px 8px;margin-right:6px}
+.whobar{padding:8px 20px;border-bottom:1px solid #2c2c2c;font-size:.85rem}.whobar select{background:#262626;color:#eee;border:0;border-radius:8px;padding:6px 8px;margin-left:6px}
+.readmemo{white-space:pre-wrap;line-height:1.6;margin:12px 0}
+.protect{-webkit-touch-callout:none}
+@media print{.protect .wrap,.protect .foot,.protect .bar{display:none!important}.protect::before{content:"인쇄할 수 없는 원고입니다";display:block;padding:40px}}

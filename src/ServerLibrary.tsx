@@ -7,10 +7,10 @@ import { useSettings } from './store/useSettings';
 import Viewer from './viewer/Viewer';
 import AssignPanel from './AssignPanel';
 
-export default function ServerLibrary({ api }: { api: Api }) {
+export default function ServerLibrary({ api, userId, myName }: { api: Api; userId: string; myName: string }) {
   const [books, setBooks] = useState<BookRow[] | null>(null);
   const [msg, setMsg] = useState(''); const [busy, setBusy] = useState('');
-  const [open, setOpen] = useState<{ book: Book; state: ReadingState | null } | null>(null);
+  const [open, setOpen] = useState<{ book: Book; state: ReadingState | null; names: Record<string, string> } | null>(null);
   const [assign, setAssign] = useState<BookRow | null>(null);
   const [settings, setSettings] = useSettings();
   const input = useRef<HTMLInputElement>(null); const reviseInput = useRef<HTMLInputElement>(null);
@@ -29,10 +29,14 @@ export default function ServerLibrary({ api }: { api: Api }) {
     setBusy(''); refresh();
   };
   const read = async (id: string) => {
-    try { setOpen({ book: await api.books.get(id), state: await api.repo.getState(id) }); } catch (e) { setMsg((e as Error).message); }
+    try {
+      const authors = await api.books.authors().catch(() => []);
+      const names: Record<string, string> = { [userId]: myName, ...Object.fromEntries(authors.map(a => [a.id, a.name || a.email])) };
+      setOpen({ book: await api.books.get(id), state: await api.repo.getState(id), names });
+    } catch (e) { setMsg((e as Error).message); }
   };
 
-  if (open) return <Viewer repo={api.repo} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
+  if (open) return <Viewer repo={api.repo} meId={userId} names={open.names} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
     onProgress={s => api.repo.saveState(s)} onClose={() => setOpen(null)} />;
 
   return (

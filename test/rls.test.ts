@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import fs from 'node:fs';
+import { STUB } from './pgstub';
 
 let db: PGlite;
 const E = '00000000-0000-0000-0000-00000000000e', A1 = '00000000-0000-0000-0000-0000000000a1', A2 = '00000000-0000-0000-0000-0000000000a2';
@@ -19,19 +20,7 @@ const denied = async (sql: string) => {
 
 beforeAll(async () => {
   db = new PGlite();
-  await db.exec(`
-    create role anon nologin; create role authenticated nologin;
-    create schema auth; create schema storage;
-    create table public.profiles (id uuid primary key, role text);  -- 기존 프로젝트에 이미 있는 같은 이름 테이블(충돌 확인용)
-    create table public.books (id int);
-    create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb);
-    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-    create table storage.buckets (id text primary key, name text, public boolean);
-    create table storage.objects (bucket_id text, name text); alter table storage.objects enable row level security;
-    grant usage on schema auth, storage, public to anon, authenticated;
-    alter default privileges in schema public grant all on tables to anon, authenticated;   -- Supabase 기본 설정 흉내
-    grant select, insert, update, delete on storage.objects to authenticated;
-  `);
+  await db.exec(STUB);
   await db.exec(fs.readFileSync('supabase/schema.sql', 'utf-8'));
   await db.exec(`
     insert into auth.users (id, email) values ('${E}','editor@x.com'), ('${A1}','a1@x.com'), ('${A2}','a2@x.com');
@@ -191,5 +180,31 @@ describe('앱이 쓰는 저장 패턴(upsert·cascade)', () => {
   it('편집자가 원고를 삭제하면 배정·형광펜·이어읽기·본문이 함께 삭제', async () => {
     await as(E, async () => { await db.exec(`insert into viewer.book_contents (book_id, content) values ('${B3}','[]'); delete from viewer.books where id='${B3}'`); });
     for (const t of ['assignments', 'annotations', 'reading_states', 'book_contents']) expect((await q(`select count(*)::int n from viewer.${t} where book_id='${B3}'`))[0].n).toBe(0);
+  });
+});
+
+describe('북마크(개인)', () => {
+  const BM = '30000000-0000-0000-0000-000000000001';
+  const up = (label: string) => `insert into viewer.bookmarks (id, book_id, chapter_id, block_index, label) values ('${BM}','${B1}','c0',5,'${label}') on conflict (id) do update set label = excluded.label`;
+  it('작가는 본인 북마크를 저장·수정(upsert)하고, 다른 작가는 못 보며 덮어쓸 수도 없다', async () => {
+    await as(A1, async () => { await db.exec(up('처음')); await db.exec(up('수정')); expect(await q('select label from viewer.bookmarks')).toEqual([{ label: '수정' }]); });
+    await as(A2, async () => { expect(await q('select * from viewer.bookmarks')).toHaveLength(0); expect(await denied(up('탈취'))).toBe(true); });
+    expect((await q(`select label from viewer.bookmarks where id='${BM}'`))[0].label).toBe('수정');
+  });
+  it('편집자도 남의 북마크는 못 본다(개인 영역)', async () => {
+    await as(E, async () => { expect(await q('select * from viewer.bookmarks')).toHaveLength(0); });
+  });
+  it('배정되지 않은 원고에는 북마크 불가, 남 명의로도 불가', async () => {
+    await as(A1, async () => {
+      expect(await denied(`insert into viewer.bookmarks (book_id, chapter_id, block_index) values ('${B2}','c0',1)`)).toBe(true);
+      expect(await denied(`insert into viewer.bookmarks (user_id, book_id, chapter_id, block_index) values ('${A2}','${B1}','c0',1)`)).toBe(true);
+    });
+  });
+  it('공유 OFF 면 보이지 않고, 다시 ON 이면 복구. 삭제는 본인만', async () => {
+    await as(E, async () => { await db.exec(`update viewer.assignments set enabled=false where book_id='${B1}' and author_id='${A1}'`); });
+    await as(A1, async () => { expect(await q('select * from viewer.bookmarks')).toHaveLength(0); });
+    await as(E, async () => { await db.exec(`update viewer.assignments set enabled=true where book_id='${B1}' and author_id='${A1}'`); });
+    await as(A2, async () => { expect(await denied(`delete from viewer.bookmarks where id='${BM}'`)).toBe(true); });
+    await as(A1, async () => { expect(await q('select * from viewer.bookmarks')).toHaveLength(1); await db.exec(`delete from viewer.bookmarks where id='${BM}'`); expect(await q('select * from viewer.bookmarks')).toHaveLength(0); });
   });
 });

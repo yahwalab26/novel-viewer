@@ -1,0 +1,29 @@
+import { it, expect } from 'vitest';
+import { PGlite } from '@electric-sql/pglite';
+import fs from 'node:fs';
+import { STUB } from './pgstub';
+
+const read = (f: string) => fs.readFileSync(f, 'utf-8');
+async function shape(files: string[]) {
+  const db = new PGlite(); await db.exec(STUB); for (const f of files) await db.exec(read(f));
+  const rows = async (sql: string) => (await db.query<any>(sql)).rows.map(r => JSON.stringify(r)).sort();
+  return {
+    columns: await rows("select table_name, column_name, data_type from information_schema.columns where table_schema='viewer'"),
+    policies: await rows("select schemaname, tablename, policyname, cmd from pg_policies where schemaname in ('viewer','storage')"),
+    rls: await rows("select relname, relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='viewer' and relkind='r'"),
+    grants: await rows("select table_name, privilege_type, grantee from information_schema.role_table_grants where table_schema='viewer' and grantee in ('anon','authenticated')"),
+  };
+}
+it('새로 설치(schema.sql)와 업그레이드(001 → 002)의 결과가 완전히 같다', async () => {
+  const fresh = await shape(['supabase/schema.sql']);
+  const upgraded = await shape(['supabase/migrations/001_init.sql', 'supabase/migrations/002_bookmarks.sql']);
+  expect(upgraded).toEqual(fresh);
+  expect(fresh.columns.some(c => c.includes('bookmarks'))).toBe(true);
+  expect(fresh.rls.every(r => r.includes('true'))).toBe(true);           // 모든 테이블 RLS 켜짐
+  expect(fresh.grants.some(g => g.includes('anon'))).toBe(false);        // 로그인 전 권한 없음
+});
+it('schema.sql 은 001 + 002 를 그대로 합친 것이다(수동 편집 방지)', () => {
+  const merged = read('supabase/schema.sql');
+  expect(merged).toContain(read('supabase/migrations/001_init.sql').trim());
+  expect(merged).toContain(read('supabase/migrations/002_bookmarks.sql').trim());
+});

@@ -131,3 +131,22 @@ describe('작가: 내 배정 조회', () => {
     expect((await api.repo.listAnnotations('b'))[0]).toMatchObject({ authorId: 'w1', start: 0, end: 2, color: 'blue' });
   });
 });
+
+describe('북마크 서버 저장', () => {
+  const bm = { id: 'k', bookId: 'b', chapterId: 'c2', blockIndex: 9, label: '그는 문을 열었다', createdAt: 1700000000000 };
+  it('저장은 upsert·삭제는 id 기준·조회는 viewer 스키마, 변환 왕복', async () => {
+    const { f, calls } = fake({ 'POST /rest/v1/bookmarks': () => ({ status: 201 }), 'DELETE /rest/v1/bookmarks': () => ({ status: 204 }),
+      'GET /rest/v1/bookmarks': () => ({ body: [{ id: 'k', book_id: 'b', chapter_id: 'c2', block_index: 9, label: '그는 문을 열었다', created_at: '2023-11-14T22:13:20.000Z' }] }) });
+    const api = createApi({ fetch: f }); await logIn(api);
+    await api.repo.saveBookmark(bm); await api.repo.deleteBookmark('b', 'k');
+    expect(calls.find(c => c.method === 'POST' && c.url.includes('bookmarks'))!.body).toMatchObject({ id: 'k', book_id: 'b', block_index: 9, label: '그는 문을 열었다' });
+    expect(decodeURIComponent(calls.find(c => c.method === 'DELETE')!.url)).toContain('id=eq.k');
+    expect(await api.repo.listBookmarks('b')).toEqual([bm]);
+    expect(calls.find(c => c.method === 'GET' && c.url.includes('bookmarks'))!.headers.get('accept-profile')).toBe('viewer');
+  });
+  it('서버 오류(예: 표가 아직 없음)는 저장/삭제에서 예외로 알린다', async () => {
+    const { f } = fake({ 'POST /rest/v1/bookmarks': () => ({ status: 404, body: { message: 'relation "viewer.bookmarks" does not exist', code: '42P01' } }) });
+    const api = createApi({ fetch: f }); await logIn(api);
+    await expect(api.repo.saveBookmark(bm)).rejects.toThrow('does not exist');
+  });
+});

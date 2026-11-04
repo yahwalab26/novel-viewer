@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import type { Annotation, Book, LibraryRepository, ReadingState } from '../core/model';
+import type { Annotation, AnnotationStore, Book, ReadingState } from '../core/model';
 import { readSelection, type Picked } from './selection';
 import { MemoSheet, NotesPanel, SelectionBar, renderSegs } from './AnnotationUI';
 import type { ViewerSettings } from '../core/settings';
 import SettingsPanel from './SettingsPanel';
 import { THEME_COLORS, FONT_SIZES, FONTS, WIDTHS, LH_DEFAULT, GAP_DEFAULT } from './theme';
 
-interface Props { repo: LibraryRepository; book: Book; state: ReadingState | null; settings: ViewerSettings; onSettings: (s: ViewerSettings) => void; onProgress: (s: ReadingState) => void; onClose: () => void }
+interface Props { repo: AnnotationStore; book: Book; state: ReadingState | null; settings: ViewerSettings; onSettings: (s: ViewerSettings) => void; onProgress: (s: ReadingState) => void; onClose: () => void }
 
 export default function Viewer({ repo, book, state, settings: s, onSettings, onProgress, onClose }: Props) {
   const [ci, setCi] = useState(() => Math.max(0, book.chapters.findIndex(c => c.id === state?.chapterId)));

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import type { Api } from './server/api';
 import type { Account } from './Library';
+import { useInstall } from './Install';
 
 export function Login({ api }: { api: Api }) {
   const [email, setEmail] = useState(''); const [pw, setPw] = useState('');
@@ -24,8 +25,11 @@ export function Login({ api }: { api: Api }) {
 }
 
 export function AccountBar({ account, onLogout }: { account: Account; onLogout: () => void }) {
+  const inst = useInstall();
   return <div className="acct"><span className={`badge ${account.role}`}>{account.role === 'editor' ? '편집자' : '작가'}</span>
-    <span className="who">{account.name || account.email}</span><button className="link" onClick={onLogout}>로그아웃</button></div>;
+    <span className="who">{account.name || account.email}</span>
+    {inst.available && <button className="link" onClick={inst.install}>앱 설치</button>}
+    <button className="link" onClick={onLogout}>로그아웃</button></div>;
 }
 
 export function Notice({ title, children, onLogout, onRetry }: { title: string; children: ReactNode; onLogout: () => void; onRetry?: () => void }) {

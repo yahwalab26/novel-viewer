@@ -5,6 +5,8 @@ import { useSettings } from './store/useSettings';
 import type { Book, BookSummary, ReadingState } from './core/model';
 import Viewer from './viewer/Viewer';
 import { AccountBar } from './Auth';
+import LibSearch from './LibSearch';
+import { filterBooks } from './core/search';
 
 export interface Account { name: string; email: string; role: 'editor' | 'author' }
 export default function Library({ account, onLogout }: { account?: Account; onLogout?: () => void }) {
@@ -12,7 +14,7 @@ export default function Library({ account, onLogout }: { account?: Account; onLo
   const [open, setOpen] = useState<{ book: Book; state: ReadingState | null } | null>(null);
   const [settings, setSettings] = useSettings();
   const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false); const [drag, setDrag] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLInputElement>(null); const [query, setQuery] = useState('');
   const refresh = useCallback(async () => setList(await repo.listBooks()), []);
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -36,11 +38,12 @@ export default function Library({ account, onLogout }: { account?: Account; onLo
         <input ref={input} type="file" hidden multiple accept=".epub,.docx,.hwpx,.hwp" onChange={e => e.target.files && add(e.target.files)} />
       </header>
       {msg && <p className="err" role="alert">{msg}</p>}
+      <LibSearch count={list.length} value={query} onChange={setQuery} />
       {list.length === 0 ? (
         <div className={'drop' + (drag ? ' on' : '')}><p>EPUB · DOCX 파일을 끌어놓거나<br />‘원고 등록’을 눌러주세요</p>
           <small>지원 예정: HWP · 파일은 이 기기 안에만 저장됩니다 (지금 지원: {SUPPORTED.join(', ')})</small></div>
       ) : (
-        <ul className="books">{list.map(b => (
+        <ul className="books">{filterBooks(list, query, b => [b.title, b.author]).map(b => (
           <li key={b.id}><button className="card" onClick={() => read(b.id)}>
             <strong>{b.title}</strong><span>{b.author ?? '작가 미상'} · {b.format.toUpperCase()}</span>
             <span>{b.chapterCount}회차 · {(b.charCount / 1000).toFixed(1)}천자</span></button>

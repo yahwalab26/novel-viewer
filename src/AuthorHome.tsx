@@ -6,12 +6,14 @@ import { useSettings } from './store/useSettings';
 import Viewer from './viewer/Viewer';
 import { AccountBar } from './Auth';
 import type { Account } from './Library';
+import LibSearch from './LibSearch';
+import { filterBooks } from './core/search';
 
 /** 작가 화면: 편집자가 배정하고 공유를 켠 원고만 목록에 나온다(서버 RLS). 업로드·삭제 없음. */
 export default function AuthorHome({ api, userId, account, onLogout }: { api: Api; userId: string; account: Account; onLogout: () => void }) {
   const [books, setBooks] = useState<BookRow[] | null>(null);
   const [copy, setCopy] = useState<Record<string, boolean>>({});
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState(''); const [query, setQuery] = useState('');
   const [open, setOpen] = useState<{ book: Book; state: ReadingState | null; allowCopy: boolean } | null>(null);
   const [settings, setSettings] = useSettings();
 
@@ -37,10 +39,11 @@ export default function AuthorHome({ api, userId, account, onLogout }: { api: Ap
       <AccountBar account={account} onLogout={onLogout} />
       <header className="lib-head"><h1>내 원고</h1><button className="link" onClick={refresh}>새로고침</button></header>
       {msg && <p className="err" role="alert">{msg}</p>}
+      <LibSearch count={books?.length ?? 0} value={query} onChange={setQuery} />
       {books === null ? <p className="sub">불러오는 중…</p> : books.length === 0 ? (
         <div className="drop"><p>배정된 원고가 없습니다</p><small>편집자가 원고를 배정하고 공유를 켜면 여기에 나타납니다</small></div>
       ) : (
-        <ul className="books">{books.map(b => (
+        <ul className="books">{filterBooks(books, query, b => [b.title]).map(b => (
           <li key={b.id}><button className="card" onClick={() => read(b.id)}>
             <strong>{b.title}</strong>
             <span>{b.format.toUpperCase()} · {b.current_revision > 1 ? `개정 ${b.current_revision}` : '초판'}</span>

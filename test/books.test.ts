@@ -116,3 +116,18 @@ describe('형광펜 서버 저장 변환', () => {
     const st = calls.find(c => c.url.includes('/reading_states'))!; expect(st.body).toMatchObject({ user_id: 'u-1', book_id: 'b', block_index: 7 });
   });
 });
+
+describe('작가: 내 배정 조회', () => {
+  it('assignments 를 viewer 스키마로 조회해 복사 허용 여부를 얻는다', async () => {
+    const { f, calls } = fake({ 'GET /rest/v1/assignments': () => ({ body: [{ book_id: 'b-1', allow_copy: false, enabled: true }] }) });
+    const api = createApi({ fetch: f }); await logIn(api);
+    expect(await api.books.myAssignments()).toEqual([{ book_id: 'b-1', allow_copy: false, enabled: true }]);
+    expect(calls.find(c => c.url.includes('/assignments'))!.headers.get('accept-profile')).toBe('viewer');
+  });
+  it('작가 형광펜 조회 결과에 작성자(authorId)가 담긴다(편집자가 구분하는 근거)', async () => {
+    const row = { id: 'i', book_id: 'b', author_id: 'w1', chapter_id: 'c0', block_index: 0, start_pos: 0, end_pos: 2, quote: '가나', color: 'blue', memo: null, created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' };
+    const { f } = fake({ 'GET /rest/v1/annotations': () => ({ body: [row] }) });
+    const api = createApi({ fetch: f }); await logIn(api);
+    expect((await api.repo.listAnnotations('b'))[0]).toMatchObject({ authorId: 'w1', start: 0, end: 2, color: 'blue' });
+  });
+});

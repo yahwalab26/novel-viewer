@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { Annotation, AnnotationStore, Book, ReadingState } from '../core/model';
 import { readSelection, type Picked } from './selection';
+import { filterAnns, installProtection, isMine } from './protect';
 import { MemoSheet, NotesPanel, SelectionBar, renderSegs } from './AnnotationUI';
 import type { ViewerSettings } from '../core/settings';
 import SettingsPanel from './SettingsPanel';
 import { THEME_COLORS, FONT_SIZES, FONTS, WIDTHS, LH_DEFAULT, GAP_DEFAULT } from './theme';
 
-interface Props { repo: AnnotationStore; book: Book; state: ReadingState | null; settings: ViewerSettings; onSettings: (s: ViewerSettings) => void; onProgress: (s: ReadingState) => void; onClose: () => void }
+interface Props { repo: AnnotationStore; meId?: string; names?: Record<string, string>; protect?: boolean; book: Book; state: ReadingState | null; settings: ViewerSettings; onSettings: (s: ViewerSettings) => void; onProgress: (s: ReadingState) => void; onClose: () => void }
 
-export default function Viewer({ repo, book, state, settings: s, onSettings, onProgress, onClose }: Props) {
+export default function Viewer({ repo, meId, names, protect, book, state, settings: s, onSettings, onProgress, onClose }: Props) {
   const [ci, setCi] = useState(() => Math.max(0, book.chapters.findIndex(c => c.id === state?.chapterId)));
   const [bar, setBar] = useState(true);
   const [panel, setPanel] = useState<null | 'settings' | 'toc' | 'notes'>(null);
@@ -16,7 +17,8 @@ export default function Viewer({ repo, book, state, settings: s, onSettings, onP
   const [tick, setTick] = useState(0);
   const [anns, setAnns] = useState<Annotation[]>([]);
   const [sel, setSel] = useState<null | Picked>(null);
-  const [edit, setEdit] = useState<null | { ann: Annotation; isNew: boolean }>(null);
+  const [edit, setEdit] = useState<null | { ann: Annotation; isNew: boolean; readOnly?: boolean }>(null);
+  const [who, setWho] = useState('all');                  // 표시할 형광펜: all | mine | 작가 id
   const [now, setNow] = useState(() => new Date());
   const wrap = useRef<HTMLDivElement>(null); const flow = useRef<HTMLDivElement>(null);
   const stride = useRef(1); const pending = useRef(state?.blockIndex ?? 0); const goLast = useRef(false);
@@ -95,7 +97,7 @@ export default function Viewer({ repo, book, state, settings: s, onSettings, onP
     if (panel) { setPanel(null); return; }
     if (edit) { setEdit(null); return; }
     const mk = (e.target as HTMLElement).closest<HTMLElement>('mark[data-a]');
-    if (mk && s.popupAnnotation) { const ann = anns.find(x => x.id === mk.dataset.a); if (ann) { setEdit({ ann, isNew: false }); return; } }
+    if (mk && s.popupAnnotation) { const ann = anns.find(x => x.id === mk.dataset.a); if (ann) { setEdit({ ann, isNew: false, readOnly: !isMine(ann, meId) }); return; } }
     const r = wrap.current!.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
     if (!scroll) {
       if (x < 0.3) return s.tapZones.left === 'prev' ? prev() : next();
@@ -115,9 +117,10 @@ export default function Viewer({ repo, book, state, settings: s, onSettings, onP
   useEffect(() => { repo.listAnnotations(book.id).then(setAnns); }, [repo, book.id]);
   const byBlock = useMemo(() => {
     const m = new Map<number, Annotation[]>();
-    if (s.highlight) for (const a of anns) if (a.chapterId === ch.id) m.set(a.blockIndex, [...(m.get(a.blockIndex) ?? []), a]);
+    if (s.highlight) for (const a of filterAnns(anns, who, meId)) if (a.chapterId === ch.id) m.set(a.blockIndex, [...(m.get(a.blockIndex) ?? []), a]);
     return m;
-  }, [anns, ch.id, s.highlight]);
+  }, [anns, ch.id, s.highlight, who, meId]);
+  useEffect(() => { if (!protect || !wrap.current) return; return installProtection(wrap.current); }, [protect]);
   const saveAnn = (a: Annotation) => { setAnns(l => [...l.filter(x => x.id !== a.id), a]); repo.saveAnnotation(a); };
   const delAnn = (id: string) => { setAnns(l => l.filter(x => x.id !== id)); repo.deleteAnnotation(book.id, id); };
   const build = (color: Annotation['color']): Annotation | null => sel && ({ id: crypto.randomUUID(), bookId: book.id, authorId: 'local', chapterId: ch.id,
@@ -148,13 +151,13 @@ export default function Viewer({ repo, book, state, settings: s, onSettings, onP
   const info = (k: string) => k === 'time' ? now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : k === 'chapter' ? ch.title : k === 'page' ? `${page + 1} / ${pages}` : k === 'percent' ? `${Math.round(((ci + (pages > 1 ? page / (pages - 1) : 0)) / book.chapters.length) * 100)}%` : '';
   const content = (<>
     <h2 className="ch-title">{ch.title}</h2>
-    {ch.blocks.map((b, i) => b.type === 'p' ? <p key={i} data-i={i}>{renderSegs(b.text, byBlock.get(i))}</p>
+    {ch.blocks.map((b, i) => b.type === 'p' ? <p key={i} data-i={i}>{renderSegs(b.text, byBlock.get(i), meId)}</p>
       : b.type === 'h' ? <h3 key={i} data-i={i}>{b.text}</h3>
       : b.type === 'scene' ? <div key={i} data-i={i} className="scene" role="separator">◇</div> : null)}
   </>);
 
   return (
-    <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}`} style={vars}>
+    <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}`} style={vars}>
       <div className={'bar top' + (bar ? '' : ' hide')}>
         <button onClick={onClose} aria-label="서재로">‹</button><span className="ttl">{book.title}</span>
         <button onClick={() => setPanel(panel === 'toc' ? null : 'toc')}>목차</button>
@@ -168,8 +171,8 @@ export default function Viewer({ repo, book, state, settings: s, onSettings, onP
       {!scroll && <div className="foot"><span>{info(s.bottomInfo.left)}</span><span>{info(s.bottomInfo.right)}</span></div>}
       <div className="dim" style={{ opacity: (1 - s.brightness) * 0.8 }} />
       {sel && !edit && !panel && <SelectionBar note={sel.clamped ? '첫 문단에만 적용돼요' : undefined} onColor={c => { const a = build(c); if (a) saveAnn(a); clearSel(); }} onMemo={() => { const a = build('yellow'); if (a) setEdit({ ann: a, isNew: true }); clearSel(); }} />}
-      {edit && <MemoSheet key={edit.ann.id} ann={edit.ann} isNew={edit.isNew} onClose={() => setEdit(null)} onDelete={() => { delAnn(edit.ann.id); setEdit(null); }} onSave={a => { saveAnn(a); setEdit(null); }} />}
-      {panel === 'notes' && <NotesPanel book={book} anns={anns} onGo={goTo} onClose={() => setPanel(null)} />}
+      {edit && <MemoSheet key={edit.ann.id} ann={edit.ann} isNew={edit.isNew} readOnly={edit.readOnly} authorName={names?.[edit.ann.authorId]} onClose={() => setEdit(null)} onDelete={() => { delAnn(edit.ann.id); setEdit(null); }} onSave={a => { saveAnn(a); setEdit(null); }} />}
+      {panel === 'notes' && <NotesPanel book={book} anns={anns} who={who} onWho={setWho} meId={meId} names={names} onGo={goTo} onClose={() => setPanel(null)} />}
       {panel === 'settings' && <SettingsPanel s={s} set={set} close={() => setPanel(null)} />}
       {panel === 'toc' && <div className="panel toc" role="dialog" aria-label="목차" onClick={e => e.stopPropagation()}>
         <div className="phead"><b>목차 ({book.chapters.length}회차)</b><button className="link" onClick={() => setPanel(null)}>닫기</button></div>

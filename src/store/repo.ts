@@ -17,6 +17,7 @@ export const localRepo: LibraryRepository = {
   async getState(id) { return ((await get('state:' + id)) as ReadingState) ?? null; },
   async saveState(s) { await set('state:' + s.bookId, s); },
   async listBookmarks(id) { return ((await get('bm:' + id)) as Bookmark[]) ?? []; },
+  async deleteBookmark(bookId, id) { const l = await this.listBookmarks(bookId); await set('bm:' + bookId, l.filter(x => x.id !== id)); },
   async listAnnotations(id) { return ((await get('ann:' + id)) as Annotation[]) ?? []; },
   async saveAnnotation(a) { const l = await this.listAnnotations(a.bookId); await set('ann:' + a.bookId, [...l.filter(x => x.id !== a.id), a]); },
   async deleteAnnotation(bookId, id) { const l = await this.listAnnotations(bookId); await set('ann:' + bookId, l.filter(x => x.id !== id)); },

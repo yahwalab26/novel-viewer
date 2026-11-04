@@ -96,6 +96,16 @@ describe('작가 A2', () => {
     expect((await q(`select memo from viewer.annotations`))[0].memo).toBe('내 메모');
   });
 });
+describe('SQL Editor(로그인 없는 관리자 세션)에서 작가 등록', () => {
+  it('add_author는 로그인한 편집자 전용이라 SQL Editor에서는 거부된다 → insert로 등록', async () => {
+    await db.exec(`insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000a3','a3@x.com')`);
+    await expect(db.exec(`select viewer.add_author('a3@x.com')`)).rejects.toThrow(/편집자만/);
+    await db.exec(`insert into viewer.profiles (id, email, name, role) select id, email, '작가3', 'author' from auth.users where email = 'a3@x.com' on conflict (id) do nothing;`);
+    expect(await q(`select role from viewer.profiles where email='a3@x.com'`)).toEqual([{ role: 'author' }]);
+    await db.exec(`insert into viewer.profiles (id, email, name, role) select id, email, '작가3', 'author' from auth.users where email = 'a3@x.com' on conflict (id) do nothing;`); // 재실행 안전
+    await db.exec(`delete from viewer.profiles where email='a3@x.com'`);
+  });
+});
 describe('계정 부여(add_author)', () => {
   it('작가는 호출 불가, 없는 이메일은 오류, 기존 편집자 역할은 바뀌지 않음', async () => {
     await as(A1, async () => { expect(await denied(`select viewer.add_author('a2@x.com')`)).toBe(true); });
@@ -144,5 +154,42 @@ describe('공유 OFF', () => {
   it('다시 켜면 복구(주석 보존)', async () => {
     await as(E, async () => { await db.exec(`update viewer.assignments set enabled=true where book_id='${B1}' and author_id='${A1}'`); });
     await as(A1, async () => { expect(await q('select * from viewer.annotations')).toHaveLength(1); });
+  });
+});
+
+// 앱(PostgREST)이 실제로 보내는 형태의 SQL이 RLS 아래에서 의도대로 동작하는지
+describe('앱이 쓰는 저장 패턴(upsert·cascade)', () => {
+  const B3 = '10000000-0000-0000-0000-000000000003', AN = '20000000-0000-0000-0000-000000000001';
+  beforeAll(async () => {
+    await as(E, async () => { await db.exec(`insert into viewer.books (id, title, format) values ('${B3}','작품3','docx'); insert into viewer.assignments (book_id, author_id) values ('${B3}','${A1}'), ('${B3}','${A2}');`); });
+  });
+  it('작가: 같은 id로 형광펜 upsert → 수정됨. 다른 작가가 같은 id로 upsert → 거부, 원본 불변', async () => {
+    const ins = (memo: string) => `insert into viewer.annotations (id, book_id, chapter_id, block_index, start_pos, end_pos, quote, color, memo) values ('${AN}','${B3}','c0',0,0,1,'가','yellow','${memo}') on conflict (id) do update set memo = excluded.memo`;
+    await as(A1, async () => { await db.exec(ins('처음')); await db.exec(ins('수정')); });
+    await as(A2, async () => { expect(await denied(ins('탈취'))).toBe(true); });
+    expect((await q(`select memo, author_id from viewer.annotations where id='${AN}'`))[0]).toEqual({ memo: '수정', author_id: A1 });
+  });
+  it('편집자: 같은 방식으로 자기 형광펜 저장 가능(작가 것은 수정 불가)', async () => {
+    await as(E, async () => {
+      await db.exec(`insert into viewer.annotations (id, book_id, chapter_id, block_index, start_pos, end_pos, quote, color) values ('20000000-0000-0000-0000-000000000002','${B3}','c0',1,0,1,'나','blue')`);
+      expect(await denied(`insert into viewer.annotations (id, book_id, chapter_id, block_index, start_pos, end_pos, quote, color, memo) values ('${AN}','${B3}','c0',0,0,1,'가','yellow','편집자가덮음') on conflict (id) do update set memo = excluded.memo`)).toBe(true);
+    });
+    expect((await q(`select memo from viewer.annotations where id='${AN}'`))[0].memo).toBe('수정');
+  });
+  it('배정 재실행(on conflict do nothing)은 기존 설정(복사 허용 등)을 유지', async () => {
+    await as(E, async () => {
+      await db.exec(`update viewer.assignments set allow_copy = true where book_id='${B3}' and author_id='${A1}'`);
+      await db.exec(`insert into viewer.assignments (book_id, author_id) values ('${B3}','${A1}') on conflict (book_id, author_id) do nothing`);
+    });
+    expect((await q(`select allow_copy from viewer.assignments where book_id='${B3}' and author_id='${A1}'`))[0].allow_copy).toBe(true);
+  });
+  it('이어읽기 upsert (작가 본인)', async () => {
+    const up = (c: string) => `insert into viewer.reading_states (user_id, book_id, chapter_id, block_index) values ('${A1}','${B3}','${c}',3) on conflict (user_id, book_id) do update set chapter_id = excluded.chapter_id`;
+    await as(A1, async () => { await db.exec(up('c1')); await db.exec(up('c2')); expect((await q('select chapter_id from viewer.reading_states where book_id = \'' + B3 + '\''))[0].chapter_id).toBe('c2'); });
+    await as(A2, async () => { expect(await denied(`insert into viewer.reading_states (user_id, book_id, chapter_id) values ('${A1}','${B3}','해킹') on conflict (user_id, book_id) do update set chapter_id = excluded.chapter_id`)).toBe(true); });
+  });
+  it('편집자가 원고를 삭제하면 배정·형광펜·이어읽기·본문이 함께 삭제', async () => {
+    await as(E, async () => { await db.exec(`insert into viewer.book_contents (book_id, content) values ('${B3}','[]'); delete from viewer.books where id='${B3}'`); });
+    for (const t of ['assignments', 'annotations', 'reading_states', 'book_contents']) expect((await q(`select count(*)::int n from viewer.${t} where book_id='${B3}'`))[0].n).toBe(0);
   });
 });

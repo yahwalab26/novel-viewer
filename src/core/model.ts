@@ -39,6 +39,9 @@ export interface Parser {
   parse(data: ArrayBuffer, fileName: string): Promise<Omit<Book, 'id' | 'addedAt'>>;
 }
 
+// 뷰어가 필요로 하는 최소 저장소(형광펜). 로컬/서버 저장소가 모두 만족한다.
+export type AnnotationStore = Pick<LibraryRepository, 'listAnnotations' | 'saveAnnotation' | 'deleteAnnotation'>;
+
 // ---- 확장 지점 2: 저장소 (지금 Local, 나중에 Remote로 교체) ----
 export interface LibraryRepository {
   saveBook(book: Book, source: Blob): Promise<void>;

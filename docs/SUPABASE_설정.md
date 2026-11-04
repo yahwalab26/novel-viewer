@@ -9,7 +9,8 @@
 
 ## 순서
 1. (새 프로젝트일 때만) supabase.com → **New project** → 이름 `novel-viewer`, 강한 DB 비밀번호(따로 보관), Region **Northeast Asia (Seoul)**, Free
-2. **SQL Editor → New query** → `supabase/schema.sql` 전체를 붙여넣고 **Run** (한 번만. 두 번 실행하면 "already exists" 오류가 나는 게 정상)
+2. **SQL Editor → New query** → `supabase/schema.sql`(v2.1) 전체를 붙여넣고 **Run** (한 번만. 두 번 실행하면 "already exists" 오류가 나는 게 정상)
+   - 이미 이전 버전(v2)을 설치했다면 전체가 아니라 **`supabase/migrations/002_bookmarks.sql`만** 실행(북마크 기능용, 한 번만)
 3. **Project Settings → API**(Data API)에서 **Exposed schemas**에 `viewer`를 추가하고 저장
 4. 계정 준비: 기존 계정이 있으면 그대로 사용. 없으면 **Authentication → Users → Add user → Create new user**(이메일·비밀번호, **Auto Confirm User** 체크)
 5. 내 계정을 편집자로 지정(처음 1회, SQL Editor에서 이메일만 바꿔 실행)
@@ -17,11 +18,17 @@
    insert into viewer.profiles (id, email, name, role)
    select id, email, '편집자', 'editor' from auth.users where email = '내이메일@example.com';
    ```
-6. 작가에게 뷰어 권한 부여(계정이 먼저 있어야 함. 6-C부터는 앱 화면에서 가능)
+6. 작가에게 뷰어 권한 부여 — 작가 계정이 먼저 있어야 한다(Authentication → Users에서 확인). **SQL Editor에서는 아래 insert를 쓴다**(작가 이메일·이름만 바꿔 실행, 여러 번 실행해도 안전).
    ```sql
-   select viewer.add_author('작가이메일@example.com', '작가이름');
+   insert into viewer.profiles (id, email, name, role)
+   select id, email, '작가이름', 'author' from auth.users where email = '작가이메일@example.com'
+   on conflict (id) do nothing;
    ```
-7. **Project Settings → API**에서 `Project URL`과 `anon`(또는 publishable) 키 확인 → 6-B에서 사용
+   확인: `select email, role from viewer.profiles;`
+   (참고: `viewer.add_author()` 함수는 **앱에 로그인한 편집자 화면(6-C)** 용이다. SQL Editor는 로그인 상태가 아니라서 "편집자만 사용할 수 있습니다" 오류가 나는 것이 정상.)
+7. 값 두 개 확인 → 6-B에서 사용
+   - **Project URL**: `https://프로젝트ID.supabase.co`. 프로젝트ID는 브라우저 주소창 `supabase.com/dashboard/project/프로젝트ID`의 마지막 부분(또는 Project Settings → General → Reference ID)
+   - **publishable key**(`sb_publishable_…`) 또는 `anon` 키: Project Settings → API Keys
 
 ## 보안
 - URL과 anon(publishable) 키는 공개 저장소에 들어가도 되도록 설계됨(권한은 DB 규칙이 강제).

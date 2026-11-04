@@ -38,15 +38,15 @@ EPUB·DOCX·HWPX·HWP 파일을 등록해 읽는 웹소설 전용 뷰어. 모바
 | 6-A | 서버 설계: DB·권한 규칙(RLS)·검증 테스트, Supabase 준비 | - | 완료(프로젝트 설정·계정 등록 확인) |
 | 6-B | 로그인(이메일/비밀번호)·역할 표시·화면 분기 | 0.6.0 | 완료 |
 | 6-C | 편집자: 원고 서버 업로드·작가 배정·공유 ON/OFF 관리 | 0.7.0 | 완료 |
-| 6-D | 작가: 배정 원고 열람·주석/이어읽기 동기화, 편집자의 주석 열람 | 0.8.0 | 구현 완료, 확인 대기 |
-| 7 | 서재 다듬기(검색·북마크)·PWA 설치 | 0.9.0 | - |
+| 6-D | 작가: 배정 원고 열람·주석/이어읽기 동기화, 편집자의 주석 열람 | 0.8.0 | 완료 |
+| 7 | 서재 다듬기(검색·북마크)·PWA 설치 | 0.9.0 | 구현 완료, 확인 대기 |
 | 8 | HWP(구형) | 0.9.x | - |
 | 9 | 배포·가이드 최종본, 첫 정식 운영 | 1.0.0 | - |
 
 후순위 백로그: 여러 문단에 걸친 형광펜, 메모 공개 범위 선택, 글자수 통계, 고아 주석 처리 화면.
 
 ## 5-1. 버전 규칙
-`CHANGELOG.md` 참조. `package.json`의 version만 수정하면 화면에 반영. 현재 0.8.0.
+`CHANGELOG.md` 참조. `package.json`의 version만 수정하면 화면에 반영. 현재 0.9.0.
 
 ## 6. 작업 로그
 - 1단계: 데이터 모델 초안, 가이드 v0 작성.
@@ -109,6 +109,15 @@ EPUB·DOCX·HWPX·HWP 파일을 등록해 읽는 웹소설 전용 뷰어. 모바
 - 구분 기준: `viewer/protect.ts`의 `isMine`/`filterAnns`. 로컬 모드(`meId` 없음)는 전부 내 것.
 - 복사 방지: `installProtection`이 copy/cut/dragstart/contextmenu를 막고 인쇄 CSS로 본문을 숨김. **선택은 허용**(형광펜 때문). 화면 캡처·개발자도구·수동 입력은 막을 수 없는 "억제" 수준. 정말 막아야 하는 원고는 공유 자체를 하지 않는 것이 유일한 보장.
 - 권한은 전부 DB(RLS)가 강제(편집자는 작가 주석 읽기만, 수정·삭제 불가 — `test/rls.test.ts`).
+
+## 6-2e. 검색·북마크·PWA (7단계, 0.9.0)
+- 본문 검색: `core/search.ts`(`searchBook`, 순수 함수·테스트됨). 이미 메모리에 있는 `Book`을 훑으므로 서버 요청 없음. 결과 최대 200건. UI는 `viewer/NavPanel.tsx`(목차·북마크·검색 3탭).
+- 북마크: `Bookmark`(+`label`=문장 앞 40자). 로컬은 IndexedDB(`bm:<bookId>`), 서버는 `viewer.bookmarks`(개인 RLS). `Viewer`는 `BookmarkStore`에만 의존. 서버 저장 실패는 토스트로 알림(표가 없을 때 등).
+- 서재 검색: `LibSearch` + `filterBooks`. 5개 이상일 때만 표시.
+- PWA: `public/manifest.webmanifest`, `public/sw.js`, `public/icons/*`. `src/Install.tsx`(설치 버튼 훅), `main.tsx`(운영 빌드에서만 SW 등록). 경로는 모두 상대경로(`base './'`)라 GitHub Pages·커스텀 도메인 모두 동작.
+- 서비스 워커 원칙: 같은 출처 GET만 처리 / HTML은 네트워크 우선(새 배포 즉시 반영) / 정적 파일은 캐시 우선+백그라운드 갱신 / **다른 출처(Supabase)는 절대 건드리지 않음 → 미출간 원고가 기기 캐시에 남지 않음**. 캐시 이름 `nv-shell-v1`(전략을 크게 바꿀 때만 올릴 것).
+- 오프라인: 앱 화면은 열리지만 서버 원고는 온라인이 필요. (보안 정책상 의도된 동작)
+- **DB 변경 절차**: ① `supabase/migrations/NNN_*.sql` 추가 ② `supabase/schema.sql`을 `001`부터 순서대로 이어 붙여 갱신 ③ `test/migrations.test.ts`(새 설치=업그레이드 일치)와 `test/rls.test.ts` 통과. schema.sql을 손으로 따로 고치지 않는다.
 
 ## 6-3. 디바이스 대응 원칙
 - 반응형 3구간: 모바일(<600px) 1단, 태블릿(600~1024px) 가로 시 두쪽보기, PC(>1024px) 본문 중앙 + 좌측 목차 패널.

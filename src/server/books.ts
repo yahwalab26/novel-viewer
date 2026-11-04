@@ -66,6 +66,8 @@ export function createBooksApi(sb: Sb) {
     // ── 작가 배정·공유
     async authors(): Promise<AuthorRow[]> { const { data, error } = await sb.from('profiles').select('id,name,email').eq('role', 'author').order('name'); fail(error, '작가 목록'); return (data ?? []) as AuthorRow[]; },
     async assignments(bookId: string): Promise<AssignRow[]> { const { data, error } = await sb.from('assignments').select('author_id,enabled,allow_copy').eq('book_id', bookId); fail(error, '배정 조회'); return (data ?? []) as AssignRow[]; },
+    /** 작가: 내게 배정된 원고별 설정(복사 허용 등). RLS상 본인 행만 보인다 */
+    async myAssignments(): Promise<{ book_id: string; allow_copy: boolean; enabled: boolean }[]> { const { data, error } = await sb.from('assignments').select('book_id,allow_copy,enabled'); fail(error, '배정 조회'); return (data ?? []) as any; },
     async assign(bookId: string, authorId: string) { fail((await sb.from('assignments').upsert({ book_id: bookId, author_id: authorId }, { onConflict: 'book_id,author_id', ignoreDuplicates: true })).error, '배정'); },
     async updateAssign(bookId: string, authorId: string, patch: { enabled?: boolean; allow_copy?: boolean }) { fail((await sb.from('assignments').update({ ...patch, updated_at: new Date().toISOString() }).eq('book_id', bookId).eq('author_id', authorId)).error, '변경'); },
     async unassign(bookId: string, authorId: string) { fail((await sb.from('assignments').delete().eq('book_id', bookId).eq('author_id', authorId)).error, '배정 해제'); },

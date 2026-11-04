@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseFile, SUPPORTED } from './parsers';
-import { localRepo as repo, loadSettings, persistSettings } from './store/repo';
-import { DEFAULT_SETTINGS, type ViewerSettings } from './core/settings';
+import { localRepo as repo } from './store/repo';
+import { useSettings } from './store/useSettings';
 import type { Book, BookSummary, ReadingState } from './core/model';
 import Viewer from './viewer/Viewer';
 import { AccountBar } from './Auth';
 
 export interface Account { name: string; email: string; role: 'editor' | 'author' }
-export default function Library({ account, onLogout }: { account: Account; onLogout: () => void }) {
+export default function Library({ account, onLogout }: { account?: Account; onLogout?: () => void }) {
   const [list, setList] = useState<BookSummary[]>([]);
   const [open, setOpen] = useState<{ book: Book; state: ReadingState | null } | null>(null);
-  const [settings, setSettings] = useState<ViewerSettings>(() => loadSettings(DEFAULT_SETTINGS));
+  const [settings, setSettings] = useSettings();
   const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false); const [drag, setDrag] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const refresh = useCallback(async () => setList(await repo.listBooks()), []);
   useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => persistSettings(settings), [settings]);
 
   const add = async (files: FileList | File[]) => {
     setBusy(true); setMsg('');
@@ -29,10 +28,10 @@ export default function Library({ account, onLogout }: { account: Account; onLog
   if (open) return <Viewer repo={repo} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
     onProgress={s => repo.saveState(s)} onClose={() => { setOpen(null); refresh(); }} />;
   return (
-    <main className="lib" onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
+    <section className="locallib" onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
       onDrop={e => { e.preventDefault(); setDrag(false); add(e.dataTransfer.files); }}>
-      <AccountBar account={account} onLogout={onLogout} />
-      <header><h1>내 서재</h1>
+      {account && onLogout && <AccountBar account={account} onLogout={onLogout} />}
+      <header className="lib-head"><h1>이 기기 서재</h1>
         <button className="primary" onClick={() => input.current?.click()} disabled={busy}>{busy ? '등록 중…' : '+ 원고 등록'}</button>
         <input ref={input} type="file" hidden multiple accept=".epub,.docx,.hwpx,.hwp" onChange={e => e.target.files && add(e.target.files)} />
       </header>
@@ -47,7 +46,6 @@ export default function Library({ account, onLogout }: { account: Account; onLog
             <span>{b.chapterCount}회차 · {(b.charCount / 1000).toFixed(1)}천자</span></button>
             <button className="ghost" aria-label={`${b.title} 삭제`} onClick={async () => { if (confirm(`‘${b.title}’을 삭제할까요?`)) { await repo.deleteBook(b.id); refresh(); } }}>삭제</button></li>))}</ul>
       )}
-    <footer className="ver">웹소설 뷰어 v{__APP_VERSION__}</footer>
-    </main>
+    </section>
   );
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { createApi } from './server/api';
 import type { Access } from './server/access';
-import Library from './Library';
+import EditorHome from './EditorHome';
 import { AccountBar, Login, Notice } from './Auth';
 
 const api = createApi();
@@ -31,7 +31,7 @@ export default function App() {
   if (state.phase === 'out') return <Login api={api} />;
   const a = state.access;
   switch (a.kind) {
-    case 'editor': return <Library account={{ name: a.name, email: a.email || state.email, role: 'editor' }} onLogout={logout} />;
+    case 'editor': return <EditorHome api={api} account={{ name: a.name, email: a.email || state.email, role: 'editor' }} onLogout={logout} />;
     case 'author': return (
       <main className="lib">
         <AccountBar account={{ name: a.name, email: a.email || state.email, role: 'author' }} onLogout={logout} />

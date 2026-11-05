@@ -46,7 +46,7 @@ EPUB·DOCX·HWPX·HWP 파일을 등록해 읽는 웹소설 전용 뷰어. 모바
 후순위 백로그: 여러 문단에 걸친 형광펜, 메모 공개 범위 선택, 글자수 통계, 고아 주석 처리 화면.
 
 ## 5-1. 버전 규칙
-`CHANGELOG.md` 참조. `package.json`의 version만 수정하면 화면에 반영. 현재 0.9.0.
+`CHANGELOG.md` 참조. `package.json`의 version만 수정하면 화면에 반영. 현재 0.9.1.
 
 ## 6. 작업 로그
 - 1단계: 데이터 모델 초안, 가이드 v0 작성.
@@ -118,6 +118,12 @@ EPUB·DOCX·HWPX·HWP 파일을 등록해 읽는 웹소설 전용 뷰어. 모바
 - 서비스 워커 원칙: 같은 출처 GET만 처리 / HTML은 네트워크 우선(새 배포 즉시 반영) / 정적 파일은 캐시 우선+백그라운드 갱신 / **다른 출처(Supabase)는 절대 건드리지 않음 → 미출간 원고가 기기 캐시에 남지 않음**. 캐시 이름 `nv-shell-v1`(전략을 크게 바꿀 때만 올릴 것).
 - 오프라인: 앱 화면은 열리지만 서버 원고는 온라인이 필요. (보안 정책상 의도된 동작)
 - **DB 변경 절차**: ① `supabase/migrations/NNN_*.sql` 추가 ② `supabase/schema.sql`을 `001`부터 순서대로 이어 붙여 갱신 ③ `test/migrations.test.ts`(새 설치=업그레이드 일치)와 `test/rls.test.ts` 통과. schema.sql을 손으로 따로 고치지 않는다.
+
+## 6-2f. 0.9.1 수정 메모
+- 로그인 화면(`Auth.tsx`)은 **비제어 입력 + FormData**로 값을 읽는다(모바일 자동완성 대응). 성공 시 `onSignedIn(session)`으로 즉시 전환하고, `onAuthStateChange`는 보조 경로로 유지(`apply`는 같은 사용자면 무시하므로 중복 호출 안전).
+- 로그인 화면은 `align-items:flex-start`(위쪽 기준). 가운데 정렬로 되돌리면 모바일 키보드 개폐 시 버튼이 움직여 첫 탭이 유실될 수 있음.
+- 설치 앱 판별: `standalone.ts` → `<html class="standalone">`. 설치 앱 전용 스타일은 `html.standalone ...` 로 추가한다(현재: `--padx-extra:1pt`).
+- 뷰어 좌우 여백은 CSS 변수 `--padx`(기본 20px, 넓은 화면 40px) + `--padx-extra`. 페이지 모드의 쪽 계산이 이 padding을 읽으므로 여백은 반드시 변수/CSS로만 바꾼다.
 
 ## 6-3. 디바이스 대응 원칙
 - 반응형 3구간: 모바일(<600px) 1단, 태블릿(600~1024px) 가로 시 두쪽보기, PC(>1024px) 본문 중앙 + 좌측 목차 패널.

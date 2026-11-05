@@ -29,7 +29,7 @@ export default function App() {
   const retry = () => { uid.current = null; api.session().then(apply); };
 
   if (state.phase === 'loading') return <main className="auth"><p className="sub">불러오는 중…</p></main>;
-  if (state.phase === 'out') return <Login api={api} />;
+  if (state.phase === 'out') return <Login api={api} onSignedIn={apply} />;
   const a = state.access;
   switch (a.kind) {
     case 'editor': return <EditorHome api={api} userId={state.userId} account={{ name: a.name, email: a.email || state.email, role: 'editor' }} onLogout={logout} />;

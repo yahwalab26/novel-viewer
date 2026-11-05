@@ -14,7 +14,8 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
 .ghost{position:absolute;top:8px;right:8px;background:none;border:0;color:#999;font-size:.8rem;padding:8px}
 /* 뷰어 */
 .viewer{position:fixed;inset:0;background:var(--bg);color:var(--fg);overflow:hidden}
-.wrap{position:absolute;inset:0;padding:max(56px,calc(env(safe-area-inset-top) + 20px)) 20px calc(env(safe-area-inset-bottom) + 36px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+:root{--padx:20px}html.standalone{--padx-extra:1pt}   /* 앱으로 설치해 연 경우 좌우 여백 +1pt (상세 디자인은 추후 조정) */
+.wrap{position:absolute;inset:0;padding:max(56px,calc(env(safe-area-inset-top) + 20px)) calc(var(--padx) + var(--padx-extra,0px)) calc(env(safe-area-inset-bottom) + 36px);overflow-y:auto;-webkit-overflow-scrolling:touch}
 .paged .wrap{overflow:hidden}
 .flow{font-family:var(--ff);font-size:var(--fs);line-height:var(--lh);max-width:var(--w);margin:0 auto;word-break:keep-all;overflow-wrap:break-word;text-align:var(--ta)}
 .paged .flow{max-width:none;margin:0}
@@ -25,7 +26,7 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
 .pgflow{transition:none}.fx-slide .pgflow{transition:transform .25s ease}
 .fx-fade .anim-0{animation:fadeA .3s}.fx-fade .anim-1{animation:fadeB .3s}
 @keyframes fadeA{from{opacity:.2}to{opacity:1}}@keyframes fadeB{from{opacity:.2}to{opacity:1}}
-.foot{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 8px);display:flex;justify-content:space-between;padding:0 20px;font-size:.75rem;opacity:.6;pointer-events:none}
+.foot{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 8px);display:flex;justify-content:space-between;padding:0 calc(var(--padx) + var(--padx-extra,0px));font-size:.75rem;opacity:.6;pointer-events:none}
 .dim{position:absolute;inset:0;background:#000;pointer-events:none}
 .bar{position:absolute;left:0;right:0;z-index:5;display:flex;align-items:center;gap:4px;padding:env(safe-area-inset-top) 8px 0;height:calc(48px + env(safe-area-inset-top));background:rgba(20,20,20,.92);color:#eee;transition:transform .2s}
 .bar.top{top:0}.bar.hide{transform:translateY(-100%)}.bar button{background:none;border:0;min-width:44px;min-height:44px;font-size:1rem}.bar .ttl{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:center;font-size:.95rem}
@@ -42,7 +43,7 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
 .toc li button{width:100%;display:flex;justify-content:space-between;background:none;border:0;border-bottom:1px solid #262626;padding:14px 0;min-height:48px;text-align:left}.toc .cur{color:#1a8cff;font-weight:600}.toc small{color:#777}
 @media (min-width:900px){
   .panel{left:auto;right:0;top:48px;bottom:0;width:380px;max-height:none;border-radius:0}
-  .wrap{padding-left:40px;padding-right:40px}
+  :root{--padx:40px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 /* 형광펜·메모 */
@@ -59,7 +60,7 @@ mark.memo{border-bottom:2px dotted currentColor}
 .selnote{color:#bbb;font-size:.75rem;margin-left:4px}
 .ver{text-align:center;color:#999;font-size:.75rem;margin:32px 0 8px}
 /* 로그인·계정 */
-.auth{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px;color:#555}
+.auth{min-height:100vh;min-height:100dvh;display:flex;align-items:flex-start;justify-content:center;padding:max(48px,env(safe-area-inset-top)) 24px 24px;color:#555}
 .card-auth{width:100%;max-width:380px;background:#fff;border:1px solid #e3dfd3;border-radius:18px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
 .card-auth h1{font-size:1.4rem;margin:0}.sub{margin:0;color:#777}
 .card-auth label{display:flex;flex-direction:column;gap:6px;font-size:.9rem;color:#555}
@@ -96,3 +97,12 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .hits mark.hl{color:#111}
 .toast{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 70px);z-index:20;background:rgba(20,20,20,.92);color:#fff;padding:10px 16px;border-radius:999px;font-size:.9rem;max-width:90%;text-align:center}
 .libsearch{width:100%;margin:8px 0 14px;font:inherit;padding:12px 14px;border:1px solid #cfc9b8;border-radius:12px;min-height:46px;background:#fff;color:#222}
+
+.card-auth button,.card-auth input{touch-action:manipulation}
+/* 북마크 목록: 제목 + 한 줄 미리보기(넘치면 …), 삭제 버튼은 오른쪽에 작게 */
+.toc .bmrow{display:flex;align-items:stretch;border-bottom:1px solid #262626}
+.toc .bmrow .bmgo{flex:1;min-width:0;display:block;border-bottom:0;padding:12px 8px 12px 0;text-align:left}
+.toc .bmrow .bmgo>span{display:block;min-width:0;padding-right:0}
+.bmgo b{display:block;font-weight:600}
+.bmgo .bmlabel{display:block;margin-top:3px;color:#aaa;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toc .bmrow .bmdel{flex:none;width:auto;min-width:52px;border-bottom:0;padding:0 4px;color:#1a8cff;display:flex;align-items:center;justify-content:center}

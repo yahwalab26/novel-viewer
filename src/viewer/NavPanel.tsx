@@ -27,9 +27,9 @@ export default function NavPanel({ book, ci, bookmarks, onChapter, onGo, onDelet
 
       {tab === 'bookmarks' && <ol className="pbody">
         {bms.length === 0 && <li className="hint">읽다가 위쪽 ★ 버튼을 누르면 지금 위치에 북마크가 생겨요.</li>}
-        {bms.map(({ b, ci: i }) => <li key={b.id} className="bmrow"><button onClick={() => onGo(i, b.blockIndex)}>
-          <span><b>{book.chapters[i].title}</b>{b.label && <span className="note">{b.label}</span>}</span></button>
-          <button className="link" aria-label="북마크 삭제" onClick={() => onDeleteBookmark(b.id)}>삭제</button></li>)}</ol>}
+        {bms.map(({ b, ci: i }) => <li key={b.id} className="bmrow">
+          <button className="bmgo" onClick={() => onGo(i, b.blockIndex)}><span><b>{book.chapters[i].title}</b>{b.label && <span className="bmlabel">{b.label}</span>}</span></button>
+          <button className="bmdel" aria-label={`${book.chapters[i].title} 북마크 삭제`} onClick={() => onDeleteBookmark(b.id)}>삭제</button></li>)}</ol>}
 
       {tab === 'search' && <div className="pbody searchbody">
         <input type="search" autoFocus placeholder="본문에서 찾기" value={q} onChange={e => setQ(e.target.value)} aria-label="본문 검색" />

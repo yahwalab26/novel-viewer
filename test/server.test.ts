@@ -42,7 +42,7 @@ describe('createApi (가짜 서버)', () => {
   it('로그인 → viewer 스키마 헤더·키·토큰으로 profiles 조회 → 편집자', async () => {
     const { f, calls } = fakeServer([{ name: '편집', email: 'e@x.com', role: 'editor' }]);
     const api = createApi({ fetch: f });
-    expect(await api.signIn(' e@x.com ', 'pw')).toBeNull();
+    const r = await api.signIn(' e@x.com ', 'pw'); expect(r.error).toBeNull(); expect(r.session?.user.id).toBe('u-1');
     expect(calls[0].url).toContain('grant_type=password');
     const s = await api.session(); expect(s?.user.id).toBe('u-1');
     expect(await api.loadAccess('u-1')).toEqual({ kind: 'editor', name: '편집', email: 'e@x.com' });

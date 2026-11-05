@@ -16,10 +16,10 @@ export function createApi(opts: { fetch?: typeof fetch } = {}) {
     repo: createRemoteRepo(sb),         // 형광펜·이어읽기 서버 저장
     async session(): Promise<Session | null> { return (await sb.auth.getSession()).data.session; },
     onAuth(cb: (s: Session | null) => void) { return sb.auth.onAuthStateChange((_e, s) => cb(s)); },
-    /** 성공하면 null, 실패하면 화면에 보여줄 한국어 메시지 */
-    async signIn(email: string, password: string): Promise<string | null> {
-      const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
-      return error ? loginErrorMessage(error.message) : null;
+    /** 성공: { error: null, session } / 실패: 화면에 보여줄 한국어 메시지 */
+    async signIn(email: string, password: string): Promise<{ error: string | null; session: Session | null }> {
+      const { data, error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+      return error ? { error: loginErrorMessage(error.message), session: null } : { error: null, session: data.session };
     },
     async signOut() { await sb.auth.signOut(); },
     async loadAccess(userId: string): Promise<Access> {

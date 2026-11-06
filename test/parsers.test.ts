@@ -33,6 +33,6 @@ describe('epub', () => {
     expect(b.chapters[0].blocks.map(x => x.type)).toEqual(['p', 'scene', 'p']);
   });
   it('미지원 포맷 안내', async () => {
-    await expect(parseFile({ name: 'a.hwp', arrayBuffer: async () => new ArrayBuffer(1) })).rejects.toThrow('준비 중');
+    await expect(parseFile({ name: 'a.pdf', arrayBuffer: async () => new ArrayBuffer(1) })).rejects.toThrow('지원하지 않는 형식');
   });
 });

@@ -46,8 +46,8 @@ export default function ServerLibrary({ api, userId, myName }: { api: Api; userI
     <section onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); upload(e.dataTransfer.files); }}>
       <header className="lib-head"><h1>서버 원고</h1>
         <button className="primary" disabled={!!busy} onClick={() => input.current?.click()}>{busy || '+ 원고 올리기'}</button>
-        <input ref={input} type="file" hidden multiple accept=".epub,.docx,.hwpx" onChange={e => { if (e.target.files) upload(e.target.files); e.target.value = ''; }} />
-        <input ref={reviseInput} type="file" hidden accept=".epub,.docx,.hwpx" onChange={e => { if (e.target.files && reviseId.current) upload(e.target.files, reviseId.current); e.target.value = ''; }} />
+        <input ref={input} type="file" hidden multiple accept=".epub,.docx,.hwpx,.hwp" onChange={e => { if (e.target.files) upload(e.target.files); e.target.value = ''; }} />
+        <input ref={reviseInput} type="file" hidden accept=".epub,.docx,.hwpx,.hwp" onChange={e => { if (e.target.files && reviseId.current) upload(e.target.files, reviseId.current); e.target.value = ''; }} />
       </header>
       {msg && <p className="err" role="alert">{msg}</p>}
       <LibSearch count={books?.length ?? 0} value={query} onChange={setQuery} />

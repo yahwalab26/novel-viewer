@@ -41,7 +41,7 @@ export default function Library({ account, onLogout }: { account?: Account; onLo
       <LibSearch count={list.length} value={query} onChange={setQuery} />
       {list.length === 0 ? (
         <div className={'drop' + (drag ? ' on' : '')}><p>EPUB · DOCX 파일을 끌어놓거나<br />‘원고 등록’을 눌러주세요</p>
-          <small>지원 예정: HWP · 파일은 이 기기 안에만 저장됩니다 (지금 지원: {SUPPORTED.join(', ')})</small></div>
+          <small>파일은 이 기기 안에만 저장됩니다 (지원 형식: {SUPPORTED.join(', ').toUpperCase()})</small></div>
       ) : (
         <ul className="books">{filterBooks(list, query, b => [b.title, b.author]).map(b => (
           <li key={b.id}><button className="card" onClick={() => read(b.id)}>

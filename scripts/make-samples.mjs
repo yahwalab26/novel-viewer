@@ -1,4 +1,5 @@
 import JSZip from 'jszip'; import fs from 'fs';
+import { buildHwp, para, ctrl, list, wide } from './hwp-builder.mjs';
 const S = ['비가 그친 골목에는 젖은 흙냄새가 남아 있었다.', '"늦었네. 오래 기다렸는데."', '수호는 대답 대신 우산을 접어 문 옆에 세워 두었다.', '창밖으로 가로등이 하나둘 켜지기 시작했다. 어디선가 낮은 종소리가 들렸다.', '"괜찮아. 이야기는 천천히 해도 되니까."', '그는 잠시 숨을 고르고 오래 묵혀 둔 말을 꺼내기 시작했다.', '찻잔에서 올라온 김이 둘 사이에서 천천히 흩어졌다.'];
 const chapters = [['1화 첫 만남', 14], ['2화 어긋난 약속', 18], ['3화 비 오는 밤', 16]];
 const body = n => Array.from({ length: n }, (_, i) => (i === 7 ? null : S[i % S.length] + (i % 3 === 0 ? ' 그리고 그 순간, 모든 것이 조용해졌다.' : '')));
@@ -37,3 +38,15 @@ xz.file('Contents/content.hpf', `<?xml version="1.0"?><opf:package ${NS}><opf:me
 xz.file('Contents/header.xml', `<?xml version="1.0"?><hh:head ${NS}><hh:styles><hh:style id="0" type="PARA" name="바탕글"/><hh:style id="2" type="PARA" name="개요 1"/></hh:styles></hh:head>`);
 xz.file('Contents/section0.xml', `<?xml version="1.0" encoding="UTF-8"?><hs:sec ${NS}>${h}</hs:sec>`);
 fs.writeFileSync('samples/샘플원고.hwpx', await xz.generateAsync({ type: 'nodebuffer' }));
+
+// HWP (가상): 머리말·표·장면구분·탭·줄바꿈·구역 2개 포함
+const hdr = para(wide(2) + wide(11), { extra: [ctrl('head', 1), list(2), para('머리말은 본문에 나오면 안 됩니다', { level: 2 })] });
+const sec = [[], []];
+[['샘플 작품 – 01', 12], ['샘플 작품 – 02', 15], ['샘플 작품 – 03', 13]].forEach(([t, n], k) => {
+  const s = sec[k === 2 ? 1 : 0];
+  if (k === 0) s.push(hdr);
+  s.push(para(t), para(''), ...body(n).map(p => (p === null ? para('***') : para(p))));
+  if (k === 0) s.push(para(wide(11), { extra: [ctrl('tbl ', 1), list(2), para('표 안의 문단', { level: 2 })] }));
+  if (k === 1) s.push(para('줄바꿈\n테스트' + wide(9) + '탭'));
+});
+fs.writeFileSync('samples/샘플원고.hwp', buildHwp({ sections: sec.map(r => Buffer.concat(r)), title: '샘플 HWP 작품', author: '테스트 작가' }));

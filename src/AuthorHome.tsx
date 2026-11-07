@@ -36,7 +36,7 @@ export default function AuthorHome({ api, userId, account, onLogout }: { api: Ap
 
   return (
     <main className="lib">
-      <AccountBar account={account} onLogout={onLogout} />
+      <AccountBar account={account} onLogout={onLogout} api={api} />
       <header className="lib-head"><h1>내 원고</h1><button className="link" onClick={refresh}>새로고침</button></header>
       {msg && <p className="err" role="alert">{msg}</p>}
       <LibSearch count={books?.length ?? 0} value={query} onChange={setQuery} />

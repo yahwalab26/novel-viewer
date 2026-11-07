@@ -106,3 +106,9 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .bmgo b{display:block;font-weight:600}
 .bmgo .bmlabel{display:block;margin-top:3px;color:#aaa;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .toc .bmrow .bmdel{flex:none;width:auto;min-width:52px;border-bottom:0;padding:0 4px;color:#1a8cff;display:flex;align-items:center;justify-content:center}
+/* 오류 화면·비밀번호 변경 */
+.errpre{white-space:pre-wrap;word-break:break-all;background:#f2efe6;border-radius:8px;padding:10px;font-size:.8rem;color:#555}
+.card-auth details{font-size:.85rem;color:#777}
+.pwform{display:flex;flex-direction:column;gap:12px;padding-bottom:20px}.pwform label{display:flex;flex-direction:column;gap:6px;font-size:.9rem;color:#555}
+.pwform input{font:inherit;padding:12px;border:1px solid #cfc9b8;border-radius:10px;min-height:46px;background:#fff;color:#222}
+.okmsg{color:#2f9e6b;font-weight:600;line-height:1.6}

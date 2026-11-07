@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { Api } from './server/api';
 import type { Account } from './Library';
 import { useInstall } from './Install';
+import { validateNewPassword } from './server/access';
 
 const LOGIN_TIMEOUT_MS = 15000;
 
@@ -36,12 +37,40 @@ export function Login({ api, onSignedIn }: { api: Api; onSignedIn: (s: Session) 
   );
 }
 
-export function AccountBar({ account, onLogout }: { account: Account; onLogout: () => void }) {
-  const inst = useInstall();
+export function PasswordModal({ api, onClose }: { api: Api; onClose: () => void }) {
+  const [err, setErr] = useState(''); const [done, setDone] = useState(false); const [busy, setBusy] = useState(false);
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); if (busy) return;
+    const fd = new FormData(e.currentTarget), pw = String(fd.get('pw') ?? ''), pw2 = String(fd.get('pw2') ?? '');
+    const bad = validateNewPassword(pw, pw2); if (bad) { setErr(bad); return; }
+    setBusy(true); setErr('');
+    const r = await api.changePassword(pw); setBusy(false);
+    if (r) setErr(r); else setDone(true);
+  };
+  return (
+    <div className="modal" role="dialog" aria-label="비밀번호 변경" onClick={onClose}>
+      <div className="sheetbox" onClick={e => e.stopPropagation()}>
+        <div className="phead"><b>비밀번호 변경</b><button className="link" onClick={onClose}>닫기</button></div>
+        {done ? <div className="pbody"><p className="okmsg" role="status">비밀번호를 변경했어요. 다음 로그인부터 새 비밀번호를 사용하세요.</p><button className="primary" onClick={onClose}>확인</button></div> : (
+          <form className="pbody pwform" onSubmit={submit}>
+            <label>새 비밀번호 (8자 이상)<input name="pw" type="password" autoComplete="new-password" required minLength={8} /></label>
+            <label>새 비밀번호 확인<input name="pw2" type="password" autoComplete="new-password" required minLength={8} /></label>
+            {err && <p className="err" role="alert">{err}</p>}
+            <button type="submit" className="primary" disabled={busy}>{busy ? '변경 중…' : '변경하기'}</button>
+          </form>)}
+      </div>
+    </div>
+  );
+}
+
+export function AccountBar({ account, onLogout, api }: { account: Account; onLogout: () => void; api?: Api }) {
+  const inst = useInstall(); const [pw, setPw] = useState(false);
   return <div className="acct"><span className={`badge ${account.role}`}>{account.role === 'editor' ? '편집자' : '작가'}</span>
     <span className="who">{account.name || account.email}</span>
     {inst.available && <button className="link" onClick={inst.install}>앱 설치</button>}
-    <button className="link" onClick={onLogout}>로그아웃</button></div>;
+    {api && <button className="link" onClick={() => setPw(true)}>비밀번호</button>}
+    <button className="link" onClick={onLogout}>로그아웃</button>
+    {pw && api && <PasswordModal api={api} onClose={() => setPw(false)} />}</div>;
 }
 
 export function Notice({ title, children, onLogout, onRetry }: { title: string; children: ReactNode; onLogout: () => void; onRetry?: () => void }) {

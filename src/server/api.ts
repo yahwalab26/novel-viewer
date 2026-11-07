@@ -1,6 +1,6 @@
 import { createClient, type Session } from '@supabase/supabase-js';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
-import { resolveAccess, loginErrorMessage, passwordErrorMessage, type Access } from './access';
+import { resolveAccess, loginErrorMessage, registerFailure, type Access } from './access';
 import { createBooksApi, createRemoteRepo } from './books';
 
 /** 서버(Supabase) 접근은 모두 이 파일을 통한다. 뷰어 데이터는 전용 스키마 `viewer`. */
@@ -22,18 +22,19 @@ export function createApi(opts: { fetch?: typeof fetch } = {}) {
       return error ? { error: loginErrorMessage(error.message), session: null } : { error: null, session: data.session };
     },
     async signOut() { await sb.auth.signOut(); },
-    /** 로그인한 본인의 비밀번호 변경. 성공하면 null, 실패하면 화면에 보여줄 메시지 */
-    async changePassword(newPassword: string): Promise<string | null> {
-      const { error } = await sb.auth.updateUser({ password: newPassword });
-      return error ? passwordErrorMessage(error.message) : null;
-    },
     async loadAccess(userId: string): Promise<Access> {
       const read = () => sb.from('profiles').select('name,email,role').eq('id', userId).maybeSingle();
       let { data, error } = await read(); let access = resolveAccess(data, error);
       if (access.kind === 'none') {
-        // 같은 프로젝트의 계정(정산 작가 등)은 첫 로그인 때 '작가'로 자동 등록(편집자는 불가·원고는 배정돼야 보임). 함수가 없거나 꺼져 있으면 그대로 '권한 없음'.
+        // 같은 프로젝트의 계정(정산 작가 등)은 첫 로그인 때 '작가'로 자동 등록(편집자는 불가·원고는 배정돼야 보임).
+        // 안 되는 경우에는 '권한 없음'에 이유를 붙여 화면이 다음 행동을 안내한다.
         const r = await sb.rpc('ensure_profile');
-        if (!r.error && r.data) { ({ data, error } = await read()); access = resolveAccess(data, error); }
+        if (r.error) access = { kind: 'none', ...registerFailure(r.error) };
+        else if (!r.data) access = { kind: 'none', reason: 'disabled' };
+        else {
+          ({ data, error } = await read()); access = resolveAccess(data, error);
+          if (access.kind === 'none') access = { kind: 'none', reason: 'failed', detail: '등록 직후 조회 실패' };
+        }
       }
       return access;
     },

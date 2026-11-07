@@ -2,6 +2,7 @@ import { it, expect } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import fs from 'node:fs';
 import { STUB } from './pgstub';
+import { buildSchema } from '../scripts/build-schema.mjs';
 
 const read = (f: string) => fs.readFileSync(f, 'utf-8');
 async function shape(files: string[]) {
@@ -14,16 +15,16 @@ async function shape(files: string[]) {
     grants: await rows("select table_name, privilege_type, grantee from information_schema.role_table_grants where table_schema='viewer' and grantee in ('anon','authenticated')"),
   };
 }
-it('새로 설치(schema.sql)와 업그레이드(001 → 002)의 결과가 완전히 같다', async () => {
+const migrations = fs.readdirSync('supabase/migrations').filter(f => /^\d{3}_.*\.sql$/.test(f)).sort().map(f => 'supabase/migrations/' + f);
+it('새로 설치(schema.sql)와 업그레이드(001 → 최신)의 결과가 완전히 같다', async () => {
   const fresh = await shape(['supabase/schema.sql']);
-  const upgraded = await shape(['supabase/migrations/001_init.sql', 'supabase/migrations/002_bookmarks.sql']);
+  const upgraded = await shape(migrations);
   expect(upgraded).toEqual(fresh);
   expect(fresh.columns.some(c => c.includes('bookmarks'))).toBe(true);
+  expect(fresh.columns.some(c => c.includes('app_settings'))).toBe(true);
   expect(fresh.rls.every(r => r.includes('true'))).toBe(true);           // 모든 테이블 RLS 켜짐
   expect(fresh.grants.some(g => g.includes('anon'))).toBe(false);        // 로그인 전 권한 없음
 });
-it('schema.sql 은 001 + 002 를 그대로 합친 것이다(수동 편집 방지)', () => {
-  const merged = read('supabase/schema.sql');
-  expect(merged).toContain(read('supabase/migrations/001_init.sql').trim());
-  expect(merged).toContain(read('supabase/migrations/002_bookmarks.sql').trim());
+it('schema.sql 은 migrations 합본 스크립트(npm run schema)의 결과와 같다(수동 편집 방지)', () => {
+  expect(read('supabase/schema.sql')).toBe(buildSchema());
 });

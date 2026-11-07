@@ -208,3 +208,45 @@ describe('북마크(개인)', () => {
     await as(A1, async () => { expect(await q('select * from viewer.bookmarks')).toHaveLength(1); await db.exec(`delete from viewer.bookmarks where id='${BM}'`); expect(await q('select * from viewer.bookmarks')).toHaveLength(0); });
   });
 });
+
+describe('자동 등록(ensure_profile) — 정산 등 같은 프로젝트 계정', () => {
+  const N1 = '00000000-0000-0000-0000-0000000000b1', N2 = '00000000-0000-0000-0000-0000000000b2';
+  beforeAll(async () => { await db.exec(`insert into auth.users (id, email, raw_user_meta_data) values ('${N1}','New1@Settle.com','{"name":"김정산"}'), ('${N2}','new2@settle.com', null)`); });
+  const ensure = () => q('select viewer.ensure_profile() as r').then(r => r[0].r);
+
+  it('프로필이 없는 로그인 사용자가 호출하면 작가로 등록(이메일 소문자, 이름 반영)되고, 다시 호출해도 그대로', async () => {
+    await as(N1, async () => { expect(await ensure()).toBe('author'); expect(await ensure()).toBe('author'); });
+    expect(await q(`select email, name, role from viewer.profiles where id='${N1}'`)).toEqual([{ email: 'new1@settle.com', name: '김정산', role: 'author' }]);
+  });
+  it('이름 정보가 없으면 이메일 앞부분을 이름으로', async () => {
+    await as(N2, async () => { await ensure(); });
+    expect((await q(`select name from viewer.profiles where id='${N2}'`))[0].name).toBe('new2');
+  });
+  it('자동 등록된 작가는 배정 전에는 어떤 원고도 못 본다', async () => {
+    await as(N1, async () => { expect(await q('select * from viewer.books')).toHaveLength(0); expect(await q('select * from viewer.book_contents')).toHaveLength(0); });
+  });
+  it('편집자가 호출해도 역할은 editor 그대로, 호출로 편집자가 될 수는 없다', async () => {
+    await as(E, async () => { expect(await ensure()).toBe('editor'); });
+    await as(N1, async () => {
+      expect(await ensure()).toBe('author');
+      expect(await denied(`insert into viewer.profiles (id, email, role) values ('${N1}','x','editor')`)).toBe(true);        // 직접 등록 불가
+      expect(await denied(`update viewer.profiles set role='editor' where id='${N1}'`)).toBe(true);
+    });
+    expect((await q(`select role from viewer.profiles where id='${N1}'`))[0].role).toBe('author');
+  });
+  it('로그인 전(anon)은 호출 불가', async () => {
+    await as(null, async () => { expect(await denied('select viewer.ensure_profile()')).toBe(true); });
+    expect((await q("select has_function_privilege('anon','viewer.ensure_profile()','execute') as ok"))[0].ok).toBe(false);        // 실행 권한 자체가 없어야 함
+    expect((await q("select has_function_privilege('authenticated','viewer.ensure_profile()','execute') as ok"))[0].ok).toBe(true);
+  });
+  it('스위치(auto_register)를 끄면 새 계정은 등록되지 않고 null, 작가는 스위치를 보거나 바꿀 수 없다', async () => {
+    const N3 = '00000000-0000-0000-0000-0000000000b3'; await db.exec(`insert into auth.users (id, email) values ('${N3}','new3@settle.com')`);
+    await as(N1, async () => { expect(await q('select * from viewer.app_settings')).toHaveLength(0); expect(await denied(`update viewer.app_settings set bool_value=false`)).toBe(true); });
+    await as(E, async () => { expect(await q('select bool_value from viewer.app_settings')).toEqual([{ bool_value: true }]); await db.exec(`update viewer.app_settings set bool_value=false where key='auto_register'`); });
+    await as(N3, async () => { expect(await ensure()).toBeNull(); });
+    expect(await q(`select * from viewer.profiles where id='${N3}'`)).toHaveLength(0);
+    await as(N1, async () => { expect(await ensure()).toBe('author'); });                       // 이미 등록된 사람은 영향 없음
+    await as(E, async () => { await db.exec(`update viewer.app_settings set bool_value=true where key='auto_register'`); });
+    await as(N3, async () => { expect(await ensure()).toBe('author'); });
+  });
+});

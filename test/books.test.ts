@@ -167,3 +167,26 @@ describe('계정: 비밀번호 변경', () => {
     }
   });
 });
+
+describe('첫 로그인 자동 등록(loadAccess)', () => {
+  const row = { name: '김정산', email: 'a@settle.com', role: 'author' };
+  it('프로필이 없으면 ensure_profile 호출 후 다시 읽어 작가로 진입', async () => {
+    let reads = 0;
+    const { f, calls } = fake({ 'GET /rest/v1/profiles': () => ({ body: reads++ === 0 ? [] : [row] }), 'POST /rest/v1/rpc/ensure_profile': () => ({ body: 'author' }) });
+    const api = createApi({ fetch: f }); await logIn(api);
+    expect(await api.loadAccess('u-1')).toEqual({ kind: 'author', name: '김정산', email: 'a@settle.com' });
+    expect(calls.find(c => c.url.includes('rpc/ensure_profile'))!.headers.get('content-profile')).toBe('viewer');
+  });
+  it('이미 프로필이 있으면 자동 등록을 부르지 않는다', async () => {
+    const { f, calls } = fake({ 'GET /rest/v1/profiles': () => ({ body: [row] }) });
+    const api = createApi({ fetch: f }); await logIn(api);
+    expect((await api.loadAccess('u-1')).kind).toBe('author'); expect(calls.some(c => c.url.includes('rpc/'))).toBe(false);
+  });
+  it('자동 등록이 꺼져 있거나(null) 함수가 아직 없으면(마이그레이션 전) 조용히 "권한 없음"', async () => {
+    for (const r of [{ body: null }, { status: 404, body: { code: 'PGRST202', message: 'Could not find the function viewer.ensure_profile' } }]) {
+      const { f } = fake({ 'GET /rest/v1/profiles': () => ({ body: [] }), 'POST /rest/v1/rpc/ensure_profile': () => r as any });
+      const api = createApi({ fetch: f }); await logIn(api);
+      expect((await api.loadAccess('u-1')).kind).toBe('none');
+    }
+  });
+});

@@ -150,3 +150,20 @@ describe('북마크 서버 저장', () => {
     await expect(api.repo.saveBookmark(bm)).rejects.toThrow('does not exist');
   });
 });
+
+describe('계정: 비밀번호 변경', () => {
+  it('로그인한 상태로 PUT /auth/v1/user 에 새 비밀번호를 보낸다', async () => {
+    const { f, calls } = fake({ 'PUT /auth/v1/user': () => ({ body: { id: 'u-1', email: 'e@x.com', aud: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: '' } }) });
+    const api = createApi({ fetch: f }); await logIn(api);
+    expect(await api.changePassword('새-비밀번호-123')).toBeNull();
+    const put = calls.find(c => c.method === 'PUT')!;
+    expect(put.body).toMatchObject({ password: '새-비밀번호-123' }); expect(put.headers.get('authorization')).toBe('Bearer a.b.c');
+  });
+  it('서버 거부 사유를 한국어 안내로 바꿔 돌려준다', async () => {
+    for (const [msg, expected] of [['New password should be different from the old password.', '이전과 다른'], ['Password should be at least 8 characters.', '더 안전한'], ['Password update requires reauthentication', '다시 로그인']] as const) {
+      const { f } = fake({ 'PUT /auth/v1/user': () => ({ status: 422, body: { code: 422, msg } }) });
+      const api = createApi({ fetch: f }); await logIn(api);
+      expect(await api.changePassword('abcdefgh1')).toContain(expected);
+    }
+  });
+});

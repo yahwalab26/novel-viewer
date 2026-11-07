@@ -25,9 +25,9 @@ describe('본문 검색', () => {
     const r = searchBook(book, '수호', { limit: 2 }); expect(r.hits).toHaveLength(2); expect(r.total).toBe(3); expect(r.truncated).toBe(true);
   });
   it('서재 검색은 제목·작가명 부분 일치', () => {
-    const list = [{ t: '사랑할 땐 누구나', a: '김작가' }, { t: '달의 정원', a: null }, { t: 'Moon', a: '박작가' }];
+    const list = [{ t: '달빛 아래서', a: '김작가' }, { t: '달의 정원', a: null }, { t: 'Moon', a: '박작가' }];
     expect(filterBooks(list, '정원', b => [b.t, b.a])).toHaveLength(1);
-    expect(filterBooks(list, '작가', b => [b.t, b.a]).map(b => b.t)).toEqual(['사랑할 땐 누구나', 'Moon']);
+    expect(filterBooks(list, '작가', b => [b.t, b.a]).map(b => b.t)).toEqual(['달빛 아래서', 'Moon']);
     expect(filterBooks(list, 'moon', b => [b.t, b.a])).toHaveLength(1);
     expect(filterBooks(list, '', b => [b.t, b.a])).toHaveLength(3);
   });

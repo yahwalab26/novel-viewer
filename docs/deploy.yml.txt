@@ -1,4 +1,4 @@
-# GitHub 저장소에 .github/workflows/deploy.yml 이름으로 만들어 붙여넣는 파일(참고용 사본)
+# GitHub 저장소의 .github/workflows/deploy.yml 내용 (정식 배포 시 교체: 설치 고정 + 타입검사 + 테스트 통과해야 배포)
 name: Deploy to GitHub Pages
 on:
   push:
@@ -19,7 +19,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

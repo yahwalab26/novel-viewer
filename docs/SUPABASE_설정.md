@@ -33,4 +33,5 @@
 ## 보안
 - URL과 anon(publishable) 키는 공개 저장소에 들어가도 되도록 설계됨(권한은 DB 규칙이 강제).
 - `service_role`/secret 키, DB 비밀번호는 절대 저장소·채팅에 올리지 않는다.
+- 운영 중 계정 추가·백업·문제 해결은 `운영매뉴얼.md`를 보세요.
 - 설치를 되돌리려면(뷰어 데이터 전부 삭제): `drop schema viewer cascade;` 그리고 Storage의 `viewer-manuscripts` 버킷 삭제.

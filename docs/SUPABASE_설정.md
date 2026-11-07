@@ -10,7 +10,7 @@
 ## 순서
 1. (새 프로젝트일 때만) supabase.com → **New project** → 이름 `novel-viewer`, 강한 DB 비밀번호(따로 보관), Region **Northeast Asia (Seoul)**, Free
 2. **SQL Editor → New query** → `supabase/schema.sql`(v2.1) 전체를 붙여넣고 **Run** (한 번만. 두 번 실행하면 "already exists" 오류가 나는 게 정상)
-   - 이미 이전 버전(v2)을 설치했다면 전체가 아니라 **`supabase/migrations/002_bookmarks.sql`만** 실행(북마크 기능용, 한 번만)
+   - 이미 이전 버전을 설치했다면 전체가 아니라 **아직 실행하지 않은 마이그레이션만** 번호 순서대로 실행(한 번씩): `002_bookmarks.sql`(북마크), `003_auto_register.sql`(정산 등 같은 프로젝트 계정 자동 등록)
 3. **Project Settings → API**(Data API)에서 **Exposed schemas**에 `viewer`를 추가하고 저장
 4. 계정 준비: 기존 계정이 있으면 그대로 사용. 없으면 **Authentication → Users → Add user → Create new user**(이메일·비밀번호, **Auto Confirm User** 체크)
 5. 내 계정을 편집자로 지정(처음 1회, SQL Editor에서 이메일만 바꿔 실행)

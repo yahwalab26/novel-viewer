@@ -64,6 +64,7 @@ test/      파서·뷰어·서버·DB 권한 테스트 (13개 파일, 99개)
 ## 5. 데이터 모델 요약
 - 로컬: IndexedDB 키 `book:` `meta:` `src:`(원본) `state:` `ann:` `bm:` + localStorage `nv.settings`.
 - 서버(`viewer` 스키마): `profiles`(역할) · `books` · `book_contents`(회차 JSON, `revision`) · `assignments`(배정·`enabled`·`allow_copy`) · `annotations` · `bookmarks` · `reading_states`. Storage `viewer-manuscripts/<bookId>/r<revision>.<형식>`(키는 영문·숫자만).
+- 계정 통합: 뷰어와 정산 사이트는 **같은 Supabase 프로젝트(같은 `auth.users`)** 를 쓴다. 정산 계정으로 뷰어에 처음 로그인하면 `server/api.ts`의 `loadAccess`가 `viewer.ensure_profile()`을 불러 **작가로만** 자동 등록(편집자 자동 부여 없음, 배정 전엔 원고 접근 불가, `viewer.app_settings.auto_register`로 중단 가능). 정산의 `public.*` 표는 건드리지 않는다.
 - 권한 요약: anon=접근 불가 / author=배정+공유ON 원고만, 본인 주석·북마크·이어읽기만 쓰기 / editor=전체 관리, 모든 작가 **주석 열람만**(수정·삭제 불가), 남의 북마크는 못 봄 / 역할 변경은 SQL로만.
 
 ## 6. 배포

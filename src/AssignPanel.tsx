@@ -32,7 +32,7 @@ export default function AssignPanel({ api, book, onClose }: { api: Api; book: Bo
                   </div>)}
               </div>); })}
           <div className="addauthor"><b>작가 추가</b>
-            <p className="hint">먼저 Supabase 대시보드(Authentication → Users)에서 계정을 만든 뒤, 그 이메일을 입력하세요.</p>
+            <p className="hint">정산 사이트에 계정이 있는 작가는 뷰어에 처음 로그인하면 이 목록에 자동으로 나타납니다. 로그인 전에 미리 넣으려면 그 이메일을 입력하세요.</p>
             <div className="addrow"><input type="email" placeholder="작가 이메일" value={email} onChange={e => setEmail(e.target.value)} />
               <button className="primary sm" disabled={!email.trim()} onClick={() => run(async () => { await api.books.addAuthor(email); setEmail(''); })}>추가</button></div></div>
         </div>

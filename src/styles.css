@@ -112,3 +112,5 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .pwform{display:flex;flex-direction:column;gap:12px;padding-bottom:20px}.pwform label{display:flex;flex-direction:column;gap:6px;font-size:.9rem;color:#555}
 .pwform input{font:inherit;padding:12px;border:1px solid #cfc9b8;border-radius:10px;min-height:46px;background:#fff;color:#222}
 .okmsg{color:#2f9e6b;font-weight:600;line-height:1.6}
+
+.card-auth .fine{font-size:.85rem;color:#777;line-height:1.6;margin:0}.card-auth .fine a,.acct a.link{color:#1a8cff}.acct a.link{padding:8px;text-decoration:none;font-size:inherit}

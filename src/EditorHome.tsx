@@ -8,7 +8,7 @@ export default function EditorHome({ api, userId, account, onLogout }: { api: Ap
   const [tab, setTab] = useState<'server' | 'local'>('server');
   return (
     <main className="lib">
-      <AccountBar account={account} onLogout={onLogout} api={api} />
+      <AccountBar account={account} onLogout={onLogout} />
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'server'} className={tab === 'server' ? 'on' : ''} onClick={() => setTab('server')}>서버 원고</button>
         <button role="tab" aria-selected={tab === 'local'} className={tab === 'local' ? 'on' : ''} onClick={() => setTab('local')}>이 기기에서만</button>

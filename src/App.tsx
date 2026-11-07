@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { createApi } from './server/api';
-import type { Access } from './server/access';
+import { noneMessage, type Access } from './server/access';
 import EditorHome from './EditorHome';
 import AuthorHome from './AuthorHome';
 import { Login, Notice } from './Auth';
@@ -34,7 +34,7 @@ export default function App() {
   switch (a.kind) {
     case 'editor': return <EditorHome api={api} userId={state.userId} account={{ name: a.name, email: a.email || state.email, role: 'editor' }} onLogout={logout} />;
     case 'author': return <AuthorHome api={api} userId={state.userId} account={{ name: a.name, email: a.email || state.email, role: 'author' }} onLogout={logout} />;
-    case 'none': return <Notice title="이용 권한이 없습니다" onLogout={logout}>이 계정({state.email})은 아직 뷰어 권한이 없습니다. 편집자에게 권한 부여를 요청해 주세요.</Notice>;
+    case 'none': return <Notice title="이용 권한이 없습니다" onLogout={logout} onRetry={a.reason ? retry : undefined}>{noneMessage(a, state.email)}</Notice>;
     case 'schema-not-exposed': return <Notice title="서버 설정이 필요합니다" onLogout={logout} onRetry={retry}>
       Supabase의 <b>Project Settings → API → Exposed schemas</b>에 <code>viewer</code>를 추가한 뒤 다시 시도해 주세요.</Notice>;
     default: return <Notice title="서버 연결 오류" onLogout={logout} onRetry={retry}>{a.message}</Notice>;

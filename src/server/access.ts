@@ -26,3 +26,18 @@ export function loginErrorMessage(msg: string): string {
   if (/failed to fetch|network/i.test(msg)) return '네트워크 연결을 확인해 주세요';
   return '로그인에 실패했습니다: ' + msg;
 }
+
+export const MIN_PASSWORD = 8;
+/** 새 비밀번호 입력 검증 — 문제가 없으면 null */
+export function validateNewPassword(pw: string, confirm: string): string | null {
+  if (pw.length < MIN_PASSWORD) return `비밀번호는 ${MIN_PASSWORD}자 이상이어야 해요`;
+  if (pw !== confirm) return '비밀번호 확인이 일치하지 않아요';
+  return null;
+}
+export function passwordErrorMessage(msg: string): string {
+  if (/different from the old|same_password/i.test(msg)) return '이전과 다른 비밀번호를 입력해 주세요';
+  if (/at least|too short|weak|pwned|should contain/i.test(msg)) return '더 안전한 비밀번호를 입력해 주세요 (길게, 영문·숫자 섞어서)';
+  if (/reauthentication|recent login|nonce/i.test(msg)) return '보안을 위해 다시 로그인한 뒤 시도해 주세요';
+  if (/failed to fetch|network/i.test(msg)) return '네트워크 연결을 확인해 주세요';
+  return '비밀번호를 변경하지 못했어요: ' + msg;
+}

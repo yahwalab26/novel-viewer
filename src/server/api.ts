@@ -1,6 +1,6 @@
 import { createClient, type Session } from '@supabase/supabase-js';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
-import { resolveAccess, loginErrorMessage, type Access } from './access';
+import { resolveAccess, loginErrorMessage, passwordErrorMessage, type Access } from './access';
 import { createBooksApi, createRemoteRepo } from './books';
 
 /** 서버(Supabase) 접근은 모두 이 파일을 통한다. 뷰어 데이터는 전용 스키마 `viewer`. */
@@ -22,6 +22,11 @@ export function createApi(opts: { fetch?: typeof fetch } = {}) {
       return error ? { error: loginErrorMessage(error.message), session: null } : { error: null, session: data.session };
     },
     async signOut() { await sb.auth.signOut(); },
+    /** 로그인한 본인의 비밀번호 변경. 성공하면 null, 실패하면 화면에 보여줄 메시지 */
+    async changePassword(newPassword: string): Promise<string | null> {
+      const { error } = await sb.auth.updateUser({ password: newPassword });
+      return error ? passwordErrorMessage(error.message) : null;
+    },
     async loadAccess(userId: string): Promise<Access> {
       const { data, error } = await sb.from('profiles').select('name,email,role').eq('id', userId).maybeSingle();
       return resolveAccess(data, error);

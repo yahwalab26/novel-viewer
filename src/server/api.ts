@@ -28,8 +28,14 @@ export function createApi(opts: { fetch?: typeof fetch } = {}) {
       return error ? passwordErrorMessage(error.message) : null;
     },
     async loadAccess(userId: string): Promise<Access> {
-      const { data, error } = await sb.from('profiles').select('name,email,role').eq('id', userId).maybeSingle();
-      return resolveAccess(data, error);
+      const read = () => sb.from('profiles').select('name,email,role').eq('id', userId).maybeSingle();
+      let { data, error } = await read(); let access = resolveAccess(data, error);
+      if (access.kind === 'none') {
+        // 같은 프로젝트의 계정(정산 작가 등)은 첫 로그인 때 '작가'로 자동 등록(편집자는 불가·원고는 배정돼야 보임). 함수가 없거나 꺼져 있으면 그대로 '권한 없음'.
+        const r = await sb.rpc('ensure_profile');
+        if (!r.error && r.data) { ({ data, error } = await read()); access = resolveAccess(data, error); }
+      }
+      return access;
     },
   };
 }

@@ -1,6 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { resolveAccess, loginErrorMessage } from '../src/server/access';
+import { resolveAccess, loginErrorMessage, noneMessage, registerFailure } from '../src/server/access';
 import { createApi } from '../src/server/api';
+
+describe('권한 없음 안내', () => {
+  it('이유별로 다음 행동이 다르다', () => {
+    expect(noneMessage({ reason: 'not-set-up' }, 'a@x.com')).toContain('준비되지 않았습니다');
+    expect(noneMessage({ reason: 'disabled' }, 'a@x.com')).toContain('꺼져 있습니다'); expect(noneMessage({ reason: 'disabled' }, 'a@x.com')).toContain('a@x.com');
+    expect(noneMessage({ reason: 'failed', detail: '시간 초과' }, 'a@x.com')).toContain('시간 초과');
+    expect(noneMessage({}, 'a@x.com')).toContain('권한 부여를 요청');
+  });
+  it('자동 등록 호출 오류 분류', () => {
+    expect(registerFailure({ code: 'PGRST202', message: 'x' }).reason).toBe('not-set-up');
+    expect(registerFailure({ message: 'Could not find the function viewer.ensure_profile in the schema cache' }).reason).toBe('not-set-up');
+    expect(registerFailure({ code: '42501', message: 'permission denied' })).toEqual({ reason: 'failed', detail: 'permission denied' });
+  });
+});
 
 describe('resolveAccess', () => {
   it('역할별 판정', () => {

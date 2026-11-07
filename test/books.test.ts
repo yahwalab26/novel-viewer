@@ -151,23 +151,6 @@ describe('북마크 서버 저장', () => {
   });
 });
 
-describe('계정: 비밀번호 변경', () => {
-  it('로그인한 상태로 PUT /auth/v1/user 에 새 비밀번호를 보낸다', async () => {
-    const { f, calls } = fake({ 'PUT /auth/v1/user': () => ({ body: { id: 'u-1', email: 'e@x.com', aud: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: '' } }) });
-    const api = createApi({ fetch: f }); await logIn(api);
-    expect(await api.changePassword('새-비밀번호-123')).toBeNull();
-    const put = calls.find(c => c.method === 'PUT')!;
-    expect(put.body).toMatchObject({ password: '새-비밀번호-123' }); expect(put.headers.get('authorization')).toBe('Bearer a.b.c');
-  });
-  it('서버 거부 사유를 한국어 안내로 바꿔 돌려준다', async () => {
-    for (const [msg, expected] of [['New password should be different from the old password.', '이전과 다른'], ['Password should be at least 8 characters.', '더 안전한'], ['Password update requires reauthentication', '다시 로그인']] as const) {
-      const { f } = fake({ 'PUT /auth/v1/user': () => ({ status: 422, body: { code: 422, msg } }) });
-      const api = createApi({ fetch: f }); await logIn(api);
-      expect(await api.changePassword('abcdefgh1')).toContain(expected);
-    }
-  });
-});
-
 describe('첫 로그인 자동 등록(loadAccess)', () => {
   const row = { name: '김정산', email: 'a@settle.com', role: 'author' };
   it('프로필이 없으면 ensure_profile 호출 후 다시 읽어 작가로 진입', async () => {
@@ -182,11 +165,21 @@ describe('첫 로그인 자동 등록(loadAccess)', () => {
     const api = createApi({ fetch: f }); await logIn(api);
     expect((await api.loadAccess('u-1')).kind).toBe('author'); expect(calls.some(c => c.url.includes('rpc/'))).toBe(false);
   });
-  it('자동 등록이 꺼져 있거나(null) 함수가 아직 없으면(마이그레이션 전) 조용히 "권한 없음"', async () => {
-    for (const r of [{ body: null }, { status: 404, body: { code: 'PGRST202', message: 'Could not find the function viewer.ensure_profile' } }]) {
+  it('실패 이유를 구분한다: 꺼짐(null) / 함수 미설치·미인식(PGRST202) / 그 밖의 오류', async () => {
+    const cases = [
+      [{ body: null }, { kind: 'none', reason: 'disabled' }],
+      [{ status: 404, body: { code: 'PGRST202', message: 'Could not find the function viewer.ensure_profile' } }, { kind: 'none', reason: 'not-set-up' }],
+      [{ status: 500, body: { code: 'XX000', message: '내부 오류' } }, { kind: 'none', reason: 'failed', detail: '내부 오류' }],
+    ] as const;
+    for (const [r, expected] of cases) {
       const { f } = fake({ 'GET /rest/v1/profiles': () => ({ body: [] }), 'POST /rest/v1/rpc/ensure_profile': () => r as any });
       const api = createApi({ fetch: f }); await logIn(api);
-      expect((await api.loadAccess('u-1')).kind).toBe('none');
+      expect(await api.loadAccess('u-1')).toEqual(expected);
     }
+  });
+  it('등록은 됐다는데 다시 읽어도 프로필이 없으면 failed', async () => {
+    const { f } = fake({ 'GET /rest/v1/profiles': () => ({ body: [] }), 'POST /rest/v1/rpc/ensure_profile': () => ({ body: 'author' }) });
+    const api = createApi({ fetch: f }); await logIn(api);
+    expect(await api.loadAccess('u-1')).toMatchObject({ kind: 'none', reason: 'failed' });
   });
 });

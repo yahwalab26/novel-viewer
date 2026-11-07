@@ -86,8 +86,8 @@ describe('설치 앱(standalone) 여백', () => {
 });
 
 import ErrorBoundary from '../src/ErrorBoundary';
-import { PasswordModal } from '../src/Auth';
-import { validateNewPassword } from '../src/server/access';
+import { AccountBar } from '../src/Auth';
+import { SETTLE_URL } from '../src/config';
 
 describe('출시용 안전장치', () => {
   it('화면 오류가 나면 하얀 화면 대신 안내와 새로고침 버튼', async () => {
@@ -101,23 +101,15 @@ describe('출시용 안전장치', () => {
     await act(async () => { root.render(<ErrorBoundary><p>정상</p></ErrorBoundary>); });
     expect(host.textContent).toBe('정상');
   });
-  it('비밀번호 검증: 8자 미만·확인 불일치 거부', () => {
-    expect(validateNewPassword('abc', 'abc')).toContain('8자'); expect(validateNewPassword('abcdefgh', 'abcdefgX')).toContain('일치');
-    expect(validateNewPassword('abcdefgh', 'abcdefgh')).toBeNull();
+  it('로그인 화면에 정산 계정 안내와 정산 사이트 링크가 있다', async () => {
+    await act(async () => { root.render(<Login api={{} as any} onSignedIn={() => {}} />); });
+    const a = host.querySelector('.fine a') as HTMLAnchorElement;
+    expect(host.querySelector('.fine')!.textContent).toContain('정산 사이트와 같은 계정'); expect(a.href).toContain('settle'); expect(a.getAttribute('rel')).toContain('noopener'); expect(a.target).toBe('_blank');
   });
-  const fillPw = (a: string, b: string) => { (host.querySelector('input[name=pw]') as HTMLInputElement).value = a; (host.querySelector('input[name=pw2]') as HTMLInputElement).value = b; };
-  it('비밀번호 변경 창: 불일치면 서버를 부르지 않고, 일치하면 변경 후 완료 안내', async () => {
-    const api: any = { changePassword: vi.fn(async () => null) };
-    await act(async () => { root.render(<PasswordModal api={api} onClose={() => {}} />); });
-    fillPw('새비밀번호123', '다른비밀번호123'); await submit();
-    expect(host.querySelector('[role=alert]')!.textContent).toContain('일치'); expect(api.changePassword).not.toHaveBeenCalled();
-    fillPw('새비밀번호123', '새비밀번호123'); await submit();
-    expect(api.changePassword).toHaveBeenCalledWith('새비밀번호123'); expect(host.querySelector('[role=status]')!.textContent).toContain('변경했어요');
-  });
-  it('서버가 거부하면 그 이유를 보여준다', async () => {
-    const api: any = { changePassword: vi.fn(async () => '이전과 다른 비밀번호를 입력해 주세요') };
-    await act(async () => { root.render(<PasswordModal api={api} onClose={() => {}} />); });
-    fillPw('같은비밀번호123', '같은비밀번호123'); await submit();
-    expect(host.querySelector('[role=alert]')!.textContent).toContain('이전과 다른');
+  it('계정 바: 비밀번호 변경은 앱 안 창이 아니라 정산 사이트로 이동하는 링크', async () => {
+    await act(async () => { root.render(<AccountBar account={{ name: '김작가', email: 'a@x.com', role: 'author' }} onLogout={() => {}} />); });
+    const link = Array.from(host.querySelectorAll('a')).find(x => x.textContent === '비밀번호 변경') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe(SETTLE_URL); expect(link.getAttribute('rel')).toContain('noopener');
+    expect(host.querySelector('[role=dialog]')).toBeNull(); expect(host.textContent).toContain('김작가');
   });
 });

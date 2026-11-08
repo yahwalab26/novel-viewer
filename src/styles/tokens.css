@@ -1,0 +1,27 @@
+/* ───────── 디자인 토큰 (기준 문서: docs/DESIGN.md) ─────────
+   톤: 야화랩 정산 사이트와 동일 — 흰 배경 · 검정 잉크 · 가는 선 · 직각 버튼 · 밑줄 입력창 · pill 칩.
+   새 색·폰트를 임의로 추가하지 말 것. 읽기 화면(.viewer)의 독서 테마는 별도(viewer/theme.ts). */
+:root {
+  --ink: #111; --ink-2: #3d3d3d; --mute: #6b6b6b; --faint: #9a9a9a;
+  --bg: #fff; --bg-soft: #f6f6f4; --line: #e4e4e1; --line-strong: #111;
+  --danger: #b3261e; --danger-bg: #fdf1f0; --ok: #1b7f4b; --ok-bg: #edf7f1;
+  --font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --fs-xs: .75rem; --fs-sm: .8125rem; --fs-md: .9375rem; --fs-lg: 1.0625rem; --fs-xl: 1.5rem; --fs-2xl: 1.875rem;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+  --h-ctl: 40px;                         /* 컨트롤 높이: 마우스 40, 터치 44 */
+  --t: 140ms;
+}
+@media (pointer: coarse) { :root { --h-ctl: 44px; } }
+
+html, body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+:where(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* 공용 컴포넌트 — 기존 클래스 이름을 유지한 채 새 톤으로 교체(화면별 개편이 끝나면 점차 새 이름으로 정리) */
+.primary { background: var(--ink); color: #fff; border: 1px solid var(--ink); border-radius: 0; min-height: var(--h-ctl); padding: 0 var(--s5); font-weight: 600; font-size: var(--fs-md); letter-spacing: -.005em; transition: background var(--t); }
+.primary:disabled { opacity: .35; cursor: default; }
+@media (hover: hover) { .primary:not(:disabled):hover { background: var(--ink-2); border-color: var(--ink-2); } }
+.link { background: none; border: 0; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; padding: 8px; font-size: var(--fs-sm); }
+.panel .link, .bar .link { color: #d8d8d8; }
+.err { background: var(--danger-bg); color: var(--danger); border-left: 3px solid var(--danger); border-radius: 0; padding: var(--s3) var(--s4); font-size: var(--fs-sm); line-height: 1.55; }
+.card { border-color: var(--line); border-radius: 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

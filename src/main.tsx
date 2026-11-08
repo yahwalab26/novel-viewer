@@ -2,6 +2,8 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './ErrorBoundary';
 import './styles.css';
+import './styles/tokens.css';
+import './styles/auth.css';
 import { markStandalone } from './standalone';
 
 markStandalone();                                     // 설치 앱이면 <html class="standalone">

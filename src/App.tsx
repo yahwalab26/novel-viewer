@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { createApi } from './server/api';
 import { noneMessage, type Access } from './server/access';
 import EditorHome from './EditorHome';
 import AuthorHome from './AuthorHome';
 import { Login, Notice } from './Auth';
+import { Loading } from './ui/AuthShell';
 
 const api = createApi();
 type State = { phase: 'loading' } | { phase: 'out' } | { phase: 'in'; userId: string; email: string; access: Access };
 
-export default function App() {
+function RealApp() {
   const [state, setState] = useState<State>({ phase: 'loading' });
   const uid = useRef<string | null>(null);
 
@@ -28,7 +29,7 @@ export default function App() {
   const logout = () => { api.signOut(); };
   const retry = () => { uid.current = null; api.session().then(apply); };
 
-  if (state.phase === 'loading') return <main className="auth"><p className="sub">불러오는 중…</p></main>;
+  if (state.phase === 'loading') return <Loading />;
   if (state.phase === 'out') return <Login api={api} onSignedIn={apply} />;
   const a = state.access;
   switch (a.kind) {
@@ -39,4 +40,11 @@ export default function App() {
       Supabase의 <b>Project Settings → API → Exposed schemas</b>에 <code>viewer</code>를 추가한 뒤 다시 시도해 주세요.</Notice>;
     default: return <Notice title="서버 연결 오류" onLogout={logout} onRetry={retry}>{a.message}</Notice>;
   }
+}
+
+// 개발 전용: ?mock=<화면> 으로 서버 없이 화면 모양을 확인(운영 빌드에는 포함되지 않음). 목록은 src/mock/MockApp.tsx
+const MockApp = import.meta.env.DEV ? lazy(() => import('./mock/MockApp')) : null;
+export default function App() {
+  if (MockApp && new URLSearchParams(location.search).has('mock')) return <Suspense fallback={null}><MockApp /></Suspense>;
+  return <RealApp />;
 }

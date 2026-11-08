@@ -4,11 +4,12 @@ import type { Api } from './server/api';
 import type { Account } from './Library';
 import { useInstall } from './Install';
 import { SETTLE_URL } from './config';
+import AuthShell from './ui/AuthShell';
 
 const LOGIN_TIMEOUT_MS = 15000;
 
-export function Login({ api, onSignedIn }: { api: Api; onSignedIn: (s: Session) => void }) {
-  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+export function Login({ api, onSignedIn, defaultError = '' }: { api: Api; onSignedIn: (s: Session) => void; defaultError?: string }) {
+  const [err, setErr] = useState(defaultError); const [show, setShow] = useState(false); const [busy, setBusy] = useState(false);
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); if (busy) return;
     // 모바일 자동완성은 입력 이벤트 없이 값만 채우는 경우가 있어, 상태값 대신 화면(DOM)의 실제 값을 읽는다
@@ -24,17 +25,20 @@ export function Login({ api, onSignedIn }: { api: Api; onSignedIn: (s: Session) 
     finally { setBusy(false); }
   };
   return (
-    <main className="auth">
-      <form className="card-auth" onSubmit={submit}>
-        <h1>웹소설 뷰어</h1><p className="sub">계정으로 로그인해 주세요</p>
-        <label>이메일<input name="email" type="email" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="next" required /></label>
-        <label>비밀번호<input name="password" type="password" autoComplete="current-password" enterKeyHint="go" required /></label>
+    <AuthShell title="로그인" lead="정산 사이트와 같은 계정으로 로그인합니다.">
+      <form onSubmit={submit} noValidate={false}>
+        <label className="field"><span>이메일</span>
+          <input name="email" type="email" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="next" required /></label>
+        <div className="field"><label htmlFor="login-pw">비밀번호</label>
+          <div className="pw-wrap">
+            <input id="login-pw" name="password" type={show ? 'text' : 'password'} autoComplete="current-password" enterKeyHint="go" required />
+            <button type="button" className="pw-toggle" aria-pressed={show} onClick={() => setShow(v => !v)}>{show ? '숨기기' : '보기'}</button>
+          </div></div>
         {err && <p className="err" role="alert">{err}</p>}
-        <button type="submit" className="primary" disabled={busy}>{busy ? '로그인 중…' : '로그인'}</button>
-        <p className="fine">정산 사이트와 같은 계정(이메일·비밀번호)입니다. 비밀번호 변경·분실은 <a href={SETTLE_URL} target="_blank" rel="noopener noreferrer">정산 사이트</a>에서 해 주세요.</p>
-        <p className="ver">v{__APP_VERSION__}</p>
+        <button type="submit" className="primary block" disabled={busy}>{busy ? '로그인 중…' : '로그인'}</button>
+        <p className="fine">비밀번호 변경·분실은 <a href={SETTLE_URL} target="_blank" rel="noopener noreferrer">정산 사이트</a>에서 해 주세요.</p>
       </form>
-    </main>
+    </AuthShell>
   );
 }
 
@@ -48,7 +52,13 @@ export function AccountBar({ account, onLogout }: { account: Account; onLogout: 
 }
 
 export function Notice({ title, children, onLogout, onRetry }: { title: string; children: ReactNode; onLogout: () => void; onRetry?: () => void }) {
-  return <main className="auth"><div className="card-auth"><h1>{title}</h1><div className="notice">{children}</div>
-    <div className="row2">{onRetry && <button className="primary" onClick={onRetry}>다시 시도</button>}<button className="link" onClick={onLogout}>로그아웃</button></div>
-    <p className="ver">v{__APP_VERSION__}</p></div></main>;
+  return (
+    <AuthShell title={title}>
+      <div className="body">{children}</div>
+      <div className="auth-actions">
+        {onRetry && <button className="primary block" onClick={onRetry}>다시 시도</button>}
+        <button className="quiet" onClick={onLogout}>로그아웃</button>
+      </div>
+    </AuthShell>
+  );
 }

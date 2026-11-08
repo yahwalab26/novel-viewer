@@ -4,7 +4,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import fs from 'node:fs';
-import { Login } from '../src/Auth';
+import { Login, Notice } from '../src/Auth';
+import { Loading } from '../src/ui/AuthShell';
 import NavPanel from '../src/viewer/NavPanel';
 import { isStandalone, markStandalone } from '../src/standalone';
 import type { Book, Bookmark } from '../src/core/model';
@@ -104,12 +105,41 @@ describe('출시용 안전장치', () => {
   it('로그인 화면에 정산 계정 안내와 정산 사이트 링크가 있다', async () => {
     await act(async () => { root.render(<Login api={{} as any} onSignedIn={() => {}} />); });
     const a = host.querySelector('.fine a') as HTMLAnchorElement;
-    expect(host.querySelector('.fine')!.textContent).toContain('정산 사이트와 같은 계정'); expect(a.href).toContain('settle'); expect(a.getAttribute('rel')).toContain('noopener'); expect(a.target).toBe('_blank');
+    expect(host.querySelector('.lead')!.textContent).toContain('정산 사이트와 같은 계정'); expect(host.querySelector('.fine')!.textContent).toContain('비밀번호 변경·분실'); expect(a.href).toContain('settle'); expect(a.getAttribute('rel')).toContain('noopener'); expect(a.target).toBe('_blank');
   });
   it('계정 바: 비밀번호 변경은 앱 안 창이 아니라 정산 사이트로 이동하는 링크', async () => {
     await act(async () => { root.render(<AccountBar account={{ name: '김작가', email: 'a@x.com', role: 'author' }} onLogout={() => {}} />); });
     const link = Array.from(host.querySelectorAll('a')).find(x => x.textContent === '비밀번호 변경') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe(SETTLE_URL); expect(link.getAttribute('rel')).toContain('noopener');
     expect(host.querySelector('[role=dialog]')).toBeNull(); expect(host.textContent).toContain('김작가');
+  });
+});
+
+describe('디자인 1단계: 로그인·안내 공통 틀', () => {
+  it('로그인: 제목·로고·하단 버전, 비밀번호 보기/숨기기 토글(aria-pressed)', async () => {
+    await act(async () => { root.render(<Login api={{} as any} onSignedIn={() => {}} />); });
+    expect(host.querySelector('h1')!.textContent).toBe('로그인'); expect(host.querySelector('.brand svg')).not.toBeNull(); expect(host.querySelector('.auth-foot')!.textContent).toMatch(/^v/);
+    const pw = host.querySelector('input[name=password]') as HTMLInputElement, tg = host.querySelector('.pw-toggle') as HTMLButtonElement;
+    expect(pw.type).toBe('password'); expect(tg.getAttribute('aria-pressed')).toBe('false'); expect(tg.textContent).toBe('보기');
+    await act(async () => { tg.click(); });
+    expect(pw.type).toBe('text'); expect(tg.getAttribute('aria-pressed')).toBe('true'); expect(tg.textContent).toBe('숨기기');
+    expect(host.querySelector('label[for=login-pw]')).not.toBeNull();                   // 입력창-라벨 연결(접근성)
+  });
+  it('안내 화면: 다시 시도는 있을 때만, 로그아웃은 항상', async () => {
+    const retry = vi.fn(), out = vi.fn();
+    await act(async () => { root.render(<Notice title="이용 권한이 없습니다" onLogout={out} onRetry={retry}>본문</Notice>); });
+    const btns = Array.from(host.querySelectorAll('button')); expect(btns.map(b => b.textContent)).toEqual(['다시 시도', '로그아웃']);
+    await act(async () => { btns[0].click(); btns[1].click(); }); expect(retry).toHaveBeenCalled(); expect(out).toHaveBeenCalled();
+    await act(async () => { root.render(<Notice title="t" onLogout={out}>본문</Notice>); });
+    expect(Array.from(host.querySelectorAll('button')).map(b => b.textContent)).toEqual(['로그아웃']);
+  });
+  it('로딩 화면은 스크린리더에 상태로 알려진다', async () => {
+    await act(async () => { root.render(<Loading />); });
+    expect(host.querySelector('[role=status]')!.textContent).toContain('불러오는 중');
+  });
+  it('토큰 CSS: 정산 톤(잉크 #111·직각 버튼·밑줄 입력창)과 터치 44px', () => {
+    const css = fs.readFileSync('src/styles/tokens.css', 'utf-8') + fs.readFileSync('src/styles/auth.css', 'utf-8');
+    expect(css).toContain('--ink: #111'); expect(css).toMatch(/\.primary \{[^}]*border-radius: 0/); expect(css).toMatch(/\.field input \{[^}]*border-bottom: 1px solid var\(--line-strong\)/);
+    expect(css).toMatch(/pointer: coarse\)[^}]*--h-ctl: 44px/);
   });
 });

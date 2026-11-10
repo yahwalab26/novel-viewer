@@ -87,7 +87,11 @@ describe('설치 앱(standalone) 여백', () => {
 });
 
 import ErrorBoundary from '../src/ErrorBoundary';
-import { AccountBar } from '../src/Auth';
+import { AccountMenu } from '../src/ui/AppShell';
+import BookRow from '../src/ui/BookRow';
+import AuthorHome from '../src/AuthorHome';
+import ServerLibrary from '../src/ServerLibrary';
+import { createMockApi } from '../src/mock/mockApi';
 import { SETTLE_URL } from '../src/config';
 
 describe('출시용 안전장치', () => {
@@ -107,11 +111,17 @@ describe('출시용 안전장치', () => {
     const a = host.querySelector('.fine a') as HTMLAnchorElement;
     expect(host.querySelector('.lead')!.textContent).toContain('정산 사이트와 같은 계정'); expect(host.querySelector('.fine')!.textContent).toContain('비밀번호 변경·분실'); expect(a.href).toContain('settle'); expect(a.getAttribute('rel')).toContain('noopener'); expect(a.target).toBe('_blank');
   });
-  it('계정 바: 비밀번호 변경은 앱 안 창이 아니라 정산 사이트로 이동하는 링크', async () => {
-    await act(async () => { root.render(<AccountBar account={{ name: '김작가', email: 'a@x.com', role: 'author' }} onLogout={() => {}} />); });
-    const link = Array.from(host.querySelectorAll('a')).find(x => x.textContent === '비밀번호 변경') as HTMLAnchorElement;
-    expect(link.getAttribute('href')).toBe(SETTLE_URL); expect(link.getAttribute('rel')).toContain('noopener');
-    expect(host.querySelector('[role=dialog]')).toBeNull(); expect(host.textContent).toContain('김작가');
+  it('계정 메뉴: 눌러야 열리고, 비밀번호 변경은 정산 사이트 링크, Esc로 닫힘', async () => {
+    const out = vi.fn();
+    await act(async () => { root.render(<AccountMenu account={{ name: '김작가', email: 'a@x.com', role: 'author' }} onLogout={out} />); });
+    expect(host.querySelector('[role=menu]')).toBeNull(); expect(host.querySelector('.acct-btn')!.textContent).toContain('김작가');
+    await act(async () => { (host.querySelector('.acct-btn') as HTMLElement).click(); });
+    expect(host.querySelector('.acct-btn')!.getAttribute('aria-expanded')).toBe('true');
+    const link = Array.from(host.querySelectorAll('a')).find(x => x.textContent!.startsWith('비밀번호 변경')) as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe(SETTLE_URL); expect(link.getAttribute('rel')).toContain('noopener'); expect(host.querySelector('.menu')!.textContent).toContain('작가');
+    await act(async () => { (Array.from(host.querySelectorAll('button')).find(x => x.textContent === '로그아웃') as HTMLElement).click(); }); expect(out).toHaveBeenCalled();
+    await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+    expect(host.querySelector('[role=menu]')).toBeNull();
   });
 });
 
@@ -141,5 +151,41 @@ describe('디자인 1단계: 로그인·안내 공통 틀', () => {
     const css = fs.readFileSync('src/styles/tokens.css', 'utf-8') + fs.readFileSync('src/styles/auth.css', 'utf-8');
     expect(css).toContain('--ink: #111'); expect(css).toMatch(/\.primary \{[^}]*border-radius: 0/); expect(css).toMatch(/\.field input \{[^}]*border-bottom: 1px solid var\(--line-strong\)/);
     expect(css).toMatch(/pointer: coarse\)[^}]*--h-ctl: 44px/);
+  });
+});
+
+describe('디자인 2단계: 서재', () => {
+  it('원고 한 줄: 본문 전체가 읽기 버튼, 관리 동작은 버튼 밖(중첩 버튼 없음), 진행 막대에 접근성 설명', async () => {
+    const open = vi.fn();
+    await act(async () => { root.render(<ul><BookRow title="달빛 아래서" byline="이서연" chips={['HWPX', '개정 2']} facts={['24회차', '98,400자']} progress={{ ratio: 0.25, label: '6회차 읽는 중' }}
+      status={{ on: true, text: '2명에게 공유 중' }} onOpen={open} actions={<button className="bk-act">작가·공유</button>} /></ul>); });
+    expect(host.querySelectorAll('.bk-main')).toHaveLength(1); expect(host.querySelector('button button')).toBeNull();
+    expect(Array.from(host.querySelectorAll('.chip')).map(c => c.textContent)).toEqual(['HWPX', '개정 2']);
+    expect(host.querySelector('.bk-prog')!.getAttribute('aria-label')).toBe('6회차 읽는 중, 25%'); expect((host.querySelector('.bk-prog i') as HTMLElement).style.width).toBe('25%');
+    expect(host.querySelector('.bk-status.on')!.textContent).toBe('2명에게 공유 중');
+    await act(async () => { (host.querySelector('.bk-main') as HTMLElement).click(); }); expect(open).toHaveBeenCalled();
+  });
+  it('작가 홈: 최근에 읽은 원고가 위, 진행·이어 읽기 표시, 읽지 않은 원고는 진행 없음', async () => {
+    await act(async () => { root.render(<AuthorHome api={createMockApi()} userId="a1" account={{ name: '이서연', email: 's@x.com', role: 'author' }} onLogout={() => {}} />); });
+    await act(async () => { await Promise.resolve(); });
+    const titles = Array.from(host.querySelectorAll('.bk-title')).map(t => t.textContent);
+    expect(titles.slice(0, 2)).toEqual(['유리 정원의 밤', '달빛 아래서']);                  // 3/2, 3/1 에 읽은 순서
+    const rows = host.querySelectorAll('.bk');
+    expect(rows[0].querySelector('.bk-readrow')!.textContent).toContain('35회차 읽는 중'); expect(rows[0].textContent).toContain('이어 읽기');
+    expect(rows[3].querySelector('.bk-prog')).toBeNull();
+    expect(host.querySelector('h1')!.textContent).toContain('내 원고'); expect(host.querySelector('.count')!.textContent).toBe('4편');
+  });
+  it('작가 홈: 원고가 없으면 안내 문장', async () => {
+    await act(async () => { root.render(<AuthorHome api={createMockApi({ empty: true })} userId="a1" account={{ name: '이서연', email: 's@x.com', role: 'author' }} onLogout={() => {}} />); });
+    await act(async () => { await Promise.resolve(); });
+    expect(host.querySelector('.empty h2')!.textContent).toBe('배정된 원고가 없어요');
+  });
+  it('편집자 서버 원고: 공유 상태 문구(공유 중 / 꺼짐 / 배정 없음)와 더보기 안의 개정본·삭제', async () => {
+    await act(async () => { root.render(<ServerLibrary api={createMockApi()} userId="e1" myName="김편집" />); });
+    await act(async () => { await Promise.resolve(); });
+    const st = Array.from(host.querySelectorAll('.bk-status')).map(s => s.textContent);
+    expect(st).toEqual(['2명에게 공유 중', '공유 꺼짐 (배정 1명)', '배정된 작가 없음', '배정된 작가 없음']);
+    const more = host.querySelector('.more')!; expect(more.textContent).toContain('개정본 올리기'); expect(more.textContent).toContain('삭제');
+    expect(host.querySelector('.primary')!.textContent).toBe('원고 올리기'); expect(host.querySelector('.lb-title .count')!.textContent).toBe('4편');
   });
 });

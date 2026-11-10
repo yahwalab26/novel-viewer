@@ -183,3 +183,16 @@ describe('첫 로그인 자동 등록(loadAccess)', () => {
     expect(await api.loadAccess('u-1')).toMatchObject({ kind: 'none', reason: 'failed' });
   });
 });
+
+describe('읽기 진행 목록', () => {
+  it('내 이어읽기 전체를 viewer 스키마로 조회해 모델로 변환', async () => {
+    const { f, calls } = fake({ 'GET /rest/v1/reading_states': () => ({ body: [{ book_id: 'b1', chapter_id: 'c7', updated_at: '2026-03-01T10:00:00.000Z' }] }) });
+    const api = createApi({ fetch: f }); await logIn(api);
+    expect(await api.repo.listStates()).toEqual([{ bookId: 'b1', chapterId: 'c7', blockIndex: 0, updatedAt: Date.parse('2026-03-01T10:00:00.000Z') }]);
+    expect(calls.find(c => c.url.includes('reading_states'))!.headers.get('accept-profile')).toBe('viewer');
+  });
+  it('조회가 실패해도 화면이 깨지지 않게 빈 목록', async () => {
+    const { f } = fake({ 'GET /rest/v1/reading_states': () => ({ status: 500, body: { message: '오류' } }) });
+    const api = createApi({ fetch: f }); await logIn(api); expect(await api.repo.listStates()).toEqual([]);
+  });
+});

@@ -23,5 +23,4 @@ html, body { background: var(--bg); color: var(--ink); font-family: var(--font);
 .link { background: none; border: 0; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; padding: 8px; font-size: var(--fs-sm); }
 .panel .link, .bar .link { color: #d8d8d8; }
 .err { background: var(--danger-bg); color: var(--danger); border-left: 3px solid var(--danger); border-radius: 0; padding: var(--s3) var(--s4); font-size: var(--fs-sm); line-height: 1.55; }
-.card { border-color: var(--line); border-radius: 0; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

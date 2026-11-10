@@ -82,7 +82,8 @@ export const rowToAnn = (r: any): Annotation => ({ id: r.id, bookId: r.book_id, 
 export const bmToRow = (b: Bookmark) => ({ id: b.id, book_id: b.bookId, chapter_id: b.chapterId, block_index: b.blockIndex, label: b.label ?? null, created_at: new Date(b.createdAt).toISOString() });
 export const rowToBm = (r: any): Bookmark => ({ id: r.id, bookId: r.book_id, chapterId: r.chapter_id, blockIndex: r.block_index, label: r.label ?? undefined, createdAt: Date.parse(r.created_at) });
 
-export function createRemoteRepo(sb: Sb): AnnotationStore & BookmarkStore & { getState(bookId: string): Promise<ReadingState | null>; saveState(s: ReadingState): Promise<void> } {
+export function createRemoteRepo(sb: Sb): AnnotationStore & BookmarkStore & {
+  listStates(): Promise<ReadingState[]>; getState(bookId: string): Promise<ReadingState | null>; saveState(s: ReadingState): Promise<void> } {
   const log = (what: string, e: unknown) => console.error(`[서버 저장 실패] ${what}`, e);
   return {
     async listAnnotations(bookId) { const { data, error } = await sb.from('annotations').select('*').eq('book_id', bookId); if (error) { log('주석 조회', error); return []; } return (data ?? []).map(rowToAnn); },
@@ -92,6 +93,12 @@ export function createRemoteRepo(sb: Sb): AnnotationStore & BookmarkStore & { ge
     async listBookmarks(bookId) { const { data, error } = await sb.from('bookmarks').select('*').eq('book_id', bookId).order('created_at'); if (error) { log('북마크 조회', error); return []; } return (data ?? []).map(rowToBm); },
     async saveBookmark(bm) { const { error } = await sb.from('bookmarks').upsert(bmToRow(bm), { onConflict: 'id' }); if (error) throw new Error(error.message); },
     async deleteBookmark(_bookId, id) { const { error } = await sb.from('bookmarks').delete().eq('id', id); if (error) throw new Error(error.message); },
+    /** 서재 목록의 읽기 진행 표시용: 내가 읽은 모든 원고의 마지막 위치 */
+    async listStates() {
+      const { data, error } = await sb.from('reading_states').select('book_id,chapter_id,updated_at');
+      if (error) { log('이어읽기 목록', error); return []; }
+      return (data ?? []).map((d: any) => ({ bookId: d.book_id, chapterId: d.chapter_id, blockIndex: 0, updatedAt: Date.parse(d.updated_at) }));
+    },
     async getState(bookId) {
       const { data } = await sb.from('reading_states').select('book_id,chapter_id,block_index,updated_at').eq('book_id', bookId).maybeSingle();
       return data ? { bookId: data.book_id, chapterId: data.chapter_id, blockIndex: data.block_index, updatedAt: Date.parse(data.updated_at) } : null;

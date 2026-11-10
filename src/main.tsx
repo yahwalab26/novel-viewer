@@ -4,6 +4,7 @@ import ErrorBoundary from './ErrorBoundary';
 import './styles.css';
 import './styles/tokens.css';
 import './styles/auth.css';
+import './styles/library.css';
 import { markStandalone } from './standalone';
 
 markStandalone();                                     // 설치 앱이면 <html class="standalone">

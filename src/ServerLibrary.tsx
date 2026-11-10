@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Api } from './server/api';
-import type { BookRow } from './server/books';
+import type { BookRow as Row } from './server/books';
 import type { Book, ReadingState } from './core/model';
 import { parseFile, SUPPORTED } from './parsers';
 import { useSettings } from './store/useSettings';
@@ -8,19 +8,24 @@ import Viewer from './viewer/Viewer';
 import AssignPanel from './AssignPanel';
 import LibSearch from './LibSearch';
 import { filterBooks } from './core/search';
+import { progressOf } from './core/progress';
+import BookRow from './ui/BookRow';
+import Empty from './ui/Empty';
 
 export default function ServerLibrary({ api, userId, myName }: { api: Api; userId: string; myName: string }) {
-  const [books, setBooks] = useState<BookRow[] | null>(null);
+  const [books, setBooks] = useState<Row[] | null>(null);
   const [msg, setMsg] = useState(''); const [busy, setBusy] = useState('');
   const [open, setOpen] = useState<{ book: Book; state: ReadingState | null; names: Record<string, string> } | null>(null);
-  const [assign, setAssign] = useState<BookRow | null>(null);
-  const [query, setQuery] = useState('');
+  const [assign, setAssign] = useState<Row | null>(null);
+  const [query, setQuery] = useState(''); const [drag, setDrag] = useState(false);
+  const [states, setStates] = useState<Map<string, ReadingState>>(new Map());
   const [settings, setSettings] = useSettings();
   const input = useRef<HTMLInputElement>(null); const reviseInput = useRef<HTMLInputElement>(null);
   const reviseId = useRef<string | null>(null);
 
   const refresh = useCallback(async () => { try { setBooks(await api.books.list()); } catch (e) { setMsg((e as Error).message); setBooks([]); } }, [api]);
-  useEffect(() => { refresh(); }, [refresh]);
+  const loadStates = useCallback(() => { api.repo.listStates().then(l => setStates(new Map(l.map(x => [x.bookId, x])))).catch(() => {}); }, [api]);
+  useEffect(() => { refresh(); loadStates(); }, [refresh, loadStates]);
 
   const upload = async (files: FileList | File[], revise?: string) => {
     setMsg('');
@@ -40,35 +45,35 @@ export default function ServerLibrary({ api, userId, myName }: { api: Api; userI
   };
 
   if (open) return <Viewer repo={api.repo} meId={userId} names={open.names} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
-    onProgress={s => api.repo.saveState(s)} onClose={() => setOpen(null)} />;
+    onProgress={s => api.repo.saveState(s)} onClose={() => { setOpen(null); loadStates(); }} />;
 
+  const visible = books ? filterBooks(books, query, b => [b.title, b.author_name]) : [];
   return (
-    <section onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); upload(e.dataTransfer.files); }}>
-      <header className="lib-head"><h1>서버 원고</h1>
-        <button className="primary" disabled={!!busy} onClick={() => input.current?.click()}>{busy || '+ 원고 올리기'}</button>
+    <section className={'lb' + (drag ? ' dragover' : '')} onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
+      onDrop={e => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files); }}>
+      <div className="lb-head">
+        <h2 className="lb-title">원고{books && <span className="count">{books.length}편</span>}</h2>
+        <button type="button" className="primary" disabled={!!busy} onClick={() => input.current?.click()}>{busy ? <><span className="spinner on-dark" aria-hidden="true" />올리는 중</> : '원고 올리기'}</button>
         <input ref={input} type="file" hidden multiple accept=".epub,.docx,.hwpx,.hwp" onChange={e => { if (e.target.files) upload(e.target.files); e.target.value = ''; }} />
         <input ref={reviseInput} type="file" hidden accept=".epub,.docx,.hwpx,.hwp" onChange={e => { if (e.target.files && reviseId.current) upload(e.target.files, reviseId.current); e.target.value = ''; }} />
-      </header>
+      </div>
+      {busy && <p className="lb-note" role="status">{busy}</p>}
       {msg && <p className="err" role="alert">{msg}</p>}
       <LibSearch count={books?.length ?? 0} value={query} onChange={setQuery} />
-      {books === null ? <p className="sub">불러오는 중…</p> : books.length === 0 ? (
-        <div className="drop"><p>서버에 올린 원고가 없습니다<br />‘원고 올리기’를 눌러 {SUPPORTED.join(' · ').toUpperCase()} 파일을 올려주세요</p>
-          <small>올린 원고는 배정한 작가에게만 보입니다</small></div>
-      ) : (
-        <ul className="books">{filterBooks(books, query, b => [b.title, b.author_name]).map(b => {
-          const shared = (b.assignments ?? []).filter(a => a.enabled).length, total = (b.assignments ?? []).length;
-          return <li key={b.id}><div className="card static">
-            <button className="titlebtn" onClick={() => read(b.id)}><strong>{b.title}</strong></button>
-            <span>{b.author_name ?? '작가 미상'} · {b.format.toUpperCase()} · {b.current_revision > 1 ? `개정 ${b.current_revision}` : '초판'}</span>
-            <span>{b.chapter_count}회차 · {(b.char_count / 1000).toFixed(1)}천자</span>
-            <span className={shared ? 'share on' : 'share'}>{total === 0 ? '배정된 작가 없음' : `공유 ${shared}명 / 배정 ${total}명`}</span>
-            <div className="cardbtns">
-              <button onClick={() => read(b.id)}>읽기</button>
-              <button onClick={() => setAssign(b)}>작가·공유</button>
-              <button onClick={() => { reviseId.current = b.id; reviseInput.current?.click(); }}>개정본</button>
-              <button className="dangertxt" onClick={async () => { if (confirm(`‘${b.title}’을 서버에서 삭제할까요?\n작가들의 형광펜·메모도 함께 삭제됩니다.`)) { try { await api.books.remove(b.id); } catch (e) { setMsg((e as Error).message); } refresh(); } }}>삭제</button>
-            </div></div></li>; })}</ul>
-      )}
+      {books === null ? <p className="loading"><span className="spinner" aria-hidden="true" />불러오는 중…</p>
+        : books.length === 0 ? <Empty title="아직 올린 원고가 없어요">원고 올리기를 누르거나 파일을 이 화면에 끌어놓으세요. {SUPPORTED.join(', ').toUpperCase()} 파일을 올릴 수 있고, 올린 원고는 배정한 작가에게만 보입니다.</Empty>
+        : visible.length === 0 ? <Empty title="찾는 원고가 없어요">검색어를 바꿔 보세요.</Empty>
+        : <ul className="bk-list">{visible.map(b => {
+            const as = b.assignments ?? [], shared = as.filter(a => a.enabled).length;
+            const status = as.length === 0 ? { on: false, text: '배정된 작가 없음' } : shared === 0 ? { on: false, text: `공유 꺼짐 (배정 ${as.length}명)` } : { on: true, text: `${shared}명에게 공유 중` };
+            return <BookRow key={b.id} title={b.title} byline={b.author_name ?? '작가 미상'} chips={[b.format.toUpperCase(), ...(b.current_revision > 1 ? [`개정 ${b.current_revision}`] : [])]}
+              facts={[`${b.chapter_count}회차`, `${b.char_count.toLocaleString()}자`]} progress={progressOf(states.get(b.id), b.chapter_count)} status={status} onOpen={() => read(b.id)}
+              actions={<>
+                <button type="button" className="bk-act" onClick={() => setAssign(b)}>작가·공유</button>
+                <details className="more"><summary className="bk-act">더보기</summary>
+                  <button type="button" className="bk-act" onClick={() => { reviseId.current = b.id; reviseInput.current?.click(); }}>개정본 올리기</button>
+                  <button type="button" className="bk-act danger" onClick={async () => { if (confirm(`‘${b.title}’을 서버에서 삭제할까요?\n작가들의 형광펜·메모도 함께 삭제되고 되돌릴 수 없습니다.`)) { try { await api.books.remove(b.id); } catch (e) { setMsg((e as Error).message); } refresh(); } }}>삭제</button>
+                </details></>} />; })}</ul>}
       {assign && <AssignPanel api={api} book={assign} onClose={() => { setAssign(null); refresh(); }} />}
     </section>
   );

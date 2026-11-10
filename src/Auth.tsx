@@ -1,8 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Api } from './server/api';
-import type { Account } from './Library';
-import { useInstall } from './Install';
 import { SETTLE_URL } from './config';
 import AuthShell from './ui/AuthShell';
 
@@ -40,15 +38,6 @@ export function Login({ api, onSignedIn, defaultError = '' }: { api: Api; onSign
       </form>
     </AuthShell>
   );
-}
-
-export function AccountBar({ account, onLogout }: { account: Account; onLogout: () => void }) {
-  const inst = useInstall();
-  return <div className="acct"><span className={`badge ${account.role}`}>{account.role === 'editor' ? '편집자' : '작가'}</span>
-    <span className="who">{account.name || account.email}</span>
-    {inst.available && <button className="link" onClick={inst.install}>앱 설치</button>}
-    <a className="link" href={SETTLE_URL} target="_blank" rel="noopener noreferrer" title="계정과 비밀번호는 정산 사이트에서 관리합니다">비밀번호 변경</a>
-    <button className="link" onClick={onLogout}>로그아웃</button></div>;
 }
 
 export function Notice({ title, children, onLogout, onRetry }: { title: string; children: ReactNode; onLogout: () => void; onRetry?: () => void }) {

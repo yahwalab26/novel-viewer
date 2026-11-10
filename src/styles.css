@@ -1,17 +1,7 @@
 *{box-sizing:border-box}html,body,#root{height:100%;margin:0}
 body{font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;background:#f6f4ee;color:#222;-webkit-text-size-adjust:100%}
 button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #1a8cff;outline-offset:2px}
-.primary{background:#1a8cff;color:#fff;border:0;border-radius:10px;padding:.7em 1.1em;font-weight:600;min-height:44px}.primary:disabled{opacity:.6}
-.link{background:none;border:0;color:#1a8cff;padding:8px}
 /* 서재 */
-.lib{max-width:860px;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) 16px 40px;min-height:100%}
-.lib header{display:flex;align-items:center;justify-content:space-between;gap:12px}.lib h1{font-size:1.5rem;margin:0}
-.drop{margin-top:24px;border:2px dashed #b9b3a3;border-radius:16px;padding:48px 20px;text-align:center;color:#555;line-height:1.7}.drop.on{border-color:#1a8cff;background:#eaf4ff}.drop small{color:#888}
-.err{background:#fde8e8;color:#9b1c1c;padding:10px 14px;border-radius:10px}
-.books{list-style:none;padding:0;margin:20px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
-.books li{position:relative}.card{width:100%;text-align:left;background:#fff;border:1px solid #e3dfd3;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:6px;min-height:96px}
-.card strong{font-size:1.05rem;padding-right:44px}.card span{color:#777;font-size:.85rem}
-.ghost{position:absolute;top:8px;right:8px;background:none;border:0;color:#999;font-size:.8rem;padding:8px}
 /* 뷰어 */
 .viewer{position:fixed;inset:0;background:var(--bg);color:var(--fg);overflow:hidden}
 :root{--padx:20px}html.standalone{--padx-extra:1pt}   /* 앱으로 설치해 연 경우 좌우 여백 +1pt (상세 디자인은 추후 조정) */
@@ -58,18 +48,9 @@ mark.memo{border-bottom:2px dotted currentColor}
 .colors{display:flex;gap:12px}.actions{display:flex;justify-content:flex-end;gap:10px;margin:14px 0 4px}.danger{background:none;border:1px solid #c0392b;color:#ff6b5e;border-radius:10px;padding:0 16px;min-height:44px}
 .note{display:block;margin-top:6px;color:#bbb;font-size:.85rem;white-space:pre-wrap}.toc li button>span{flex:1;padding-right:12px}
 .selnote{color:#bbb;font-size:.75rem;margin-left:4px}
-.ver{text-align:center;color:#999;font-size:.75rem;margin:32px 0 8px}
 /* 로그인·계정 */
 .sub{margin:0;color:#777}
-.acct{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-bottom:10px;font-size:.9rem}.acct .who{color:#555}
-.badge{font-size:.72rem;font-weight:700;border-radius:999px;padding:3px 9px;color:#fff}.badge.editor{background:#1a8cff}.badge.author{background:#2f9e6b}
 /* 서버 서재·배정 */
-.lib-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}.lib-head h1{font-size:1.3rem;margin:0}
-.tabs{display:flex;gap:6px;margin:6px 0 18px;border-bottom:1px solid #ddd8c8}.tabs button{background:none;border:0;padding:12px 14px;min-height:44px;color:#777;border-bottom:3px solid transparent;margin-bottom:-1px}.tabs .on{color:#1a8cff;border-color:#1a8cff;font-weight:700}
-.card.static{background:#fff;border:1px solid #e3dfd3;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:6px;min-height:96px}
-.titlebtn{background:none;border:0;padding:0;text-align:left;font-size:1.05rem}.card.static span{color:#777;font-size:.85rem}
-.share{font-weight:600}.share.on{color:#2f9e6b}
-.cardbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.cardbtns button{background:#f2efe6;border:0;border-radius:8px;padding:0 12px;min-height:40px;font-size:.85rem}.cardbtns .dangertxt{color:#c0392b;margin-left:auto}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center}
 .sheetbox{background:#fff;width:100%;max-width:560px;max-height:88%;border-radius:18px 18px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
 .sheetbox .phead{border-color:#eee}.sheetbox .pbody{overflow-y:auto;padding:0 20px 20px}.sheetbox .hint{color:#777}
@@ -91,7 +72,6 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .hits{list-style:none;padding:0;margin:0}.hits button{width:100%;text-align:left;background:none;border:0;border-bottom:1px solid #262626;padding:12px 0;display:flex;flex-direction:column;gap:4px;line-height:1.5;color:#ddd}.hits small{color:#777}
 .hits mark.hl{color:#111}
 .toast{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 70px);z-index:20;background:rgba(20,20,20,.92);color:#fff;padding:10px 16px;border-radius:999px;font-size:.9rem;max-width:90%;text-align:center}
-.libsearch{width:100%;margin:8px 0 14px;font:inherit;padding:12px 14px;border:1px solid #cfc9b8;border-radius:12px;min-height:46px;background:#fff;color:#222}
 
 /* 북마크 목록: 제목 + 한 줄 미리보기(넘치면 …), 삭제 버튼은 오른쪽에 작게 */
 .toc .bmrow{display:flex;align-items:stretch;border-bottom:1px solid #262626}
@@ -102,4 +82,3 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .toc .bmrow .bmdel{flex:none;width:auto;min-width:52px;border-bottom:0;padding:0 4px;color:#1a8cff;display:flex;align-items:center;justify-content:center}
 /* 오류 화면·비밀번호 변경 */
 
-.acct a.link{padding:8px;text-decoration:none;font-size:inherit}

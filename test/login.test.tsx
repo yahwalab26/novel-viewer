@@ -185,7 +185,55 @@ describe('디자인 2단계: 서재', () => {
     await act(async () => { await Promise.resolve(); });
     const st = Array.from(host.querySelectorAll('.bk-status')).map(s => s.textContent);
     expect(st).toEqual(['2명에게 공유 중', '공유 꺼짐 (배정 1명)', '배정된 작가 없음', '배정된 작가 없음']);
-    const more = host.querySelector('.more')!; expect(more.textContent).toContain('개정본 올리기'); expect(more.textContent).toContain('삭제');
+    expect(host.querySelector('[role=menu]')).toBeNull();                              // 더보기는 눌러야 네모 메뉴 상자가 열린다
+    const more = host.querySelector('.bk-actions .acct-wrap .bk-act') as HTMLElement; expect(more.textContent).toBe('더보기');
+    await act(async () => { more.click(); });
+    expect(Array.from(host.querySelectorAll('[role=menuitem]')).map(i => i.textContent)).toEqual(['개정본 올리기', '삭제']);
     expect(host.querySelector('.primary')!.textContent).toBe('원고 올리기'); expect(host.querySelector('.lb-title .count')!.textContent).toBe('4편');
+  });
+});
+
+import ActionMenu from '../src/ui/ActionMenu';
+import { useFileDrop, DropOverlay } from '../src/ui/useFileDrop';
+
+describe('더보기 메뉴 상자', () => {
+  it('눌러야 열리고 항목을 고르면 닫히며, Esc·바깥 클릭으로도 닫힌다. 삭제 항목은 위험 표시', async () => {
+    const del = vi.fn(), rev = vi.fn();
+    await act(async () => { root.render(<ActionMenu label="더보기" items={[{ label: '개정본 올리기', onSelect: rev }, { label: '삭제', danger: true, onSelect: del }]} />); });
+    expect(host.querySelector('[role=menu]')).toBeNull();
+    const btn = () => host.querySelector('.bk-act') as HTMLElement;
+    await act(async () => { btn().click(); });
+    expect(btn().getAttribute('aria-expanded')).toBe('true');
+    const items = Array.from(host.querySelectorAll('[role=menuitem]')); expect(items.map(i => i.textContent)).toEqual(['개정본 올리기', '삭제']); expect(items[1].className).toContain('danger');
+    await act(async () => { (items[1] as HTMLElement).click(); }); expect(del).toHaveBeenCalled(); expect(host.querySelector('[role=menu]')).toBeNull();
+    await act(async () => { btn().click(); }); await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); }); expect(host.querySelector('[role=menu]')).toBeNull();
+    await act(async () => { btn().click(); }); await act(async () => { document.body.dispatchEvent(new Event('pointerdown', { bubbles: true })); }); expect(host.querySelector('[role=menu]')).toBeNull();
+  });
+});
+
+describe('파일 끌어놓기 업로드', () => {
+  const Probe = ({ onFiles, enabled = true }: { onFiles: (f: File[]) => void; enabled?: boolean }) => { const d = useFileDrop(onFiles, enabled); return <DropOverlay show={d}>놓으면 올라가요</DropOverlay>; };
+  const fire = (type: string, types: string[], files: File[] = []) => {
+    const e = new Event(type, { bubbles: true, cancelable: true }); Object.defineProperty(e, 'dataTransfer', { value: { types, files, dropEffect: '' } }); window.dispatchEvent(e); return e;
+  };
+  it('화면 어디에 놓아도 파일을 받고, 끄는 동안 안내가 뜨고, 기본 동작(브라우저가 파일을 여는 것)을 막는다', async () => {
+    const got = vi.fn(); const f = new File(['x'], '원고.hwpx');
+    await act(async () => { root.render(<Probe onFiles={got} />); });
+    await act(async () => { fire('dragenter', ['Files']); }); expect(host.querySelector('.drop-overlay')!.textContent).toContain('놓으면 올라가요');
+    let e!: Event; await act(async () => { e = fire('drop', ['Files'], [f]); });
+    expect(e.defaultPrevented).toBe(true); expect(got).toHaveBeenCalledWith([f]); expect(host.querySelector('.drop-overlay')).toBeNull();
+  });
+  it('파일이 아닌 드래그(글자 끌기)는 무시, 사용 안 함 상태에서는 받지 않는다', async () => {
+    const got = vi.fn();
+    await act(async () => { root.render(<Probe onFiles={got} />); });
+    await act(async () => { fire('dragenter', ['text/plain']); }); expect(host.querySelector('.drop-overlay')).toBeNull();
+    await act(async () => { fire('drop', ['text/plain'], [new File(['x'], 'a.txt')]); }); expect(got).not.toHaveBeenCalled();
+    await act(async () => { root.render(<Probe onFiles={got} enabled={false} />); });
+    await act(async () => { fire('drop', ['Files'], [new File(['x'], 'a.hwpx')]); }); expect(got).not.toHaveBeenCalled();
+  });
+  it('끌었다가 화면 밖으로 나가면 안내가 사라진다', async () => {
+    await act(async () => { root.render(<Probe onFiles={() => {}} />); });
+    await act(async () => { fire('dragenter', ['Files']); fire('dragenter', ['Files']); fire('dragleave', ['Files']); }); expect(host.querySelector('.drop-overlay')).not.toBeNull();   // 안쪽 요소로 이동
+    await act(async () => { fire('dragleave', ['Files']); }); expect(host.querySelector('.drop-overlay')).toBeNull();
   });
 });

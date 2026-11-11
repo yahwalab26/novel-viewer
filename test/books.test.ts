@@ -196,3 +196,26 @@ describe('읽기 진행 목록', () => {
     const api = createApi({ fetch: f }); await logIn(api); expect(await api.repo.listStates()).toEqual([]);
   });
 });
+
+describe('읽기 진행률 저장', () => {
+  const st = { bookId: 'b1', chapterId: 'c3', blockIndex: 7, updatedAt: 1700000000000, progress: 0.42 };
+  it('저장할 때 progress 를 함께 보내고, 목록 조회에서 되돌려 받는다', async () => {
+    const { f, calls } = fake({ 'POST /rest/v1/reading_states': () => ({ status: 201 }), 'GET /rest/v1/reading_states': () => ({ body: [{ book_id: 'b1', chapter_id: 'c3', updated_at: '2026-03-01T10:00:00.000Z', progress: 0.42 }] }) });
+    const api = createApi({ fetch: f }); await logIn(api);
+    await api.repo.saveState(st);
+    expect(calls.find(c => c.method === 'POST' && c.url.includes('reading_states'))!.body).toMatchObject({ book_id: 'b1', chapter_id: 'c3', progress: 0.42 });
+    expect((await api.repo.listStates())[0]).toMatchObject({ bookId: 'b1', progress: 0.42 });
+  });
+  it('004 SQL 실행 전(progress 열 없음)에도 이어읽기 저장·목록이 정상 동작한다', async () => {
+    let posts = 0;
+    const missing = { status: 400, body: { code: 'PGRST204', message: "Could not find the 'progress' column of 'reading_states' in the schema cache" } };
+    const { f, calls } = fake({
+      'POST /rest/v1/reading_states': c => (c.body && 'progress' in c.body ? (posts++, missing) : (posts++, { status: 201 })),
+      'GET /rest/v1/reading_states': c => (c.url.includes('progress') ? { status: 400, body: { code: '42703', message: 'column reading_states.progress does not exist' } } : { body: [{ book_id: 'b1', chapter_id: 'c3', updated_at: '2026-03-01T10:00:00.000Z' }] }),
+    });
+    const api = createApi({ fetch: f }); await logIn(api);
+    await api.repo.saveState(st);
+    expect(posts).toBe(2); expect(calls.filter(c => c.method === 'POST' && c.url.includes('reading_states')).at(-1)!.body).not.toHaveProperty('progress');   // 다시 보낸 요청엔 progress 없음
+    expect(await api.repo.listStates()).toEqual([{ bookId: 'b1', chapterId: 'c3', blockIndex: 0, updatedAt: Date.parse('2026-03-01T10:00:00.000Z'), progress: undefined }]);
+  });
+});

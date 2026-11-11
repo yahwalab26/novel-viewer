@@ -250,3 +250,15 @@ describe('자동 등록(ensure_profile) — 정산 등 같은 프로젝트 계�
     await as(N3, async () => { expect(await ensure()).toBe('author'); });
   });
 });
+
+describe('읽기 진행률(progress)', () => {
+  const up = (v: string) => `insert into viewer.reading_states (user_id, book_id, chapter_id, progress) values ('${A1}','${B1}','c0',${v}) on conflict (user_id, book_id) do update set progress = excluded.progress`;
+  it('작가는 본인 진행률을 저장·수정하고, 0~1 밖의 값은 거부, 기본값은 0', async () => {
+    await as(A1, async () => {
+      await db.exec(up('0.4')); expect((await q('select progress from viewer.reading_states'))[0].progress).toBeCloseTo(0.4);
+      await db.exec(up('1')); expect((await q('select progress from viewer.reading_states'))[0].progress).toBe(1);
+      expect(await denied(up('1.5'))).toBe(true); expect(await denied(up('-0.1'))).toBe(true);
+    });
+    await as(A2, async () => { expect(await q('select * from viewer.reading_states')).toHaveLength(0); });          // 남의 진행률은 안 보임
+  });
+});

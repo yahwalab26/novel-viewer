@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { Annotation, AnnotationStore, Book, Bookmark, BookmarkStore, ReadingState } from '../core/model';
 import { readSelection, type Picked } from './selection';
 import { filterAnns, installProtection, isMine } from './protect';
+import { readingProgress } from '../core/progress';
 import { MemoSheet, NotesPanel, SelectionBar, renderSegs } from './AnnotationUI';
 import type { ViewerSettings } from '../core/settings';
 import SettingsPanel from './SettingsPanel';
@@ -72,8 +73,12 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   }, [scroll, page]);
   const save = useCallback(() => {
     if (!(flow.current ?? wrap.current)) return;
-    onProgress({ bookId: book.id, chapterId: ch.id, blockIndex: currentBlock(), updatedAt: Date.now() });
-  }, [currentBlock, ch.id, book.id, onProgress]);
+    const idx = currentBlock(), w = wrap.current!;
+    // 마지막 회차 끝까지 내려가야 100%. 한 화면에 다 들어가는(스크롤할 수 없는) 짧은 글은 열기만 해서는 100%가 되지 않는다
+    const atEnd = scroll ? (w.scrollHeight > w.clientHeight + 8 && w.scrollTop + w.clientHeight >= w.scrollHeight - 4) : (pages > 1 && page >= pages - 1);
+    const progress = ci >= book.chapters.length - 1 && atEnd ? 1 : readingProgress(book.chapters, ci, idx);
+    onProgress({ bookId: book.id, chapterId: ch.id, blockIndex: idx, updatedAt: Date.now(), progress });
+  }, [currentBlock, ch.id, ci, book, scroll, page, pages, onProgress]);
   const timer = useRef<number>();
   const later = () => { clearTimeout(timer.current); timer.current = window.setTimeout(save, 500); };
   useEffect(later, [ci, page, scroll]); // eslint-disable-line

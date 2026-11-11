@@ -10,8 +10,8 @@ export const mockBooks: BookRow[] = [
   row({ id: 'b4', title: '서랍 속의 계절과 아주 긴 제목이 두 줄로 넘어갈 때의 모습', format: 'hwp', chapter_count: 8, char_count: 22800 }),
 ];
 export const mockStates = [
-  { bookId: 'b3', chapterId: 'c34', blockIndex: 0, updatedAt: Date.parse('2026-03-02T10:00:00Z') },
-  { bookId: 'b1', chapterId: 'c7', blockIndex: 0, updatedAt: Date.parse('2026-03-01T10:00:00Z') },
+  { bookId: 'b3', chapterId: 'c34', blockIndex: 0, updatedAt: Date.parse('2026-03-02T10:00:00Z'), progress: 0.96 },
+  { bookId: 'b1', chapterId: 'c7', blockIndex: 0, updatedAt: Date.parse('2026-03-01T10:00:00Z'), progress: 0.33 },
 ];
 export const mockAuthors = [{ id: 'a1', name: '이서연', email: 'seoyeon@example.com' }, { id: 'a2', name: '박민준', email: 'minjun@example.com' }];
 const p = (text: string) => ({ type: 'p' as const, text });

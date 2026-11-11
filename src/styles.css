@@ -12,7 +12,7 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
 .flow p{margin:0 0 var(--gap);text-indent:1em}.flow h3{font-size:1.1em;margin:1.4em 0 .8em}
 .ch-title{font-size:1.15em;margin:.6em 0 1.6em;text-align:center;opacity:.9}.paged .ch-title{margin-top:0}
 .scene{text-align:center;opacity:.5;margin:1.6em 0;letter-spacing:.5em}
-.endnav{display:flex;gap:12px;justify-content:center;margin:48px 0 24px}.endnav button{border:1px solid currentColor;background:none;border-radius:10px;padding:.7em 1.2em;min-height:44px}.endnav .primary{border:0}
+.endnav{display:flex;gap:12px;justify-content:center;margin:48px 0 24px}.endnav button{border:1px solid currentColor;background:none;border-radius:0;padding:0 1.4em;min-height:44px;color:inherit}.endnav .primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .pgflow{transition:none}.fx-slide .pgflow{transition:transform .25s ease}
 .fx-fade .anim-0{animation:fadeA .3s}.fx-fade .anim-1{animation:fadeB .3s}
 @keyframes fadeA{from{opacity:.2}to{opacity:1}}@keyframes fadeB{from{opacity:.2}to{opacity:1}}

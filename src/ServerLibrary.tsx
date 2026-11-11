@@ -11,13 +11,15 @@ import { filterBooks } from './core/search';
 import { progressOf } from './core/progress';
 import BookRow from './ui/BookRow';
 import Empty from './ui/Empty';
+import ActionMenu from './ui/ActionMenu';
+import { DropOverlay, useFileDrop } from './ui/useFileDrop';
 
 export default function ServerLibrary({ api, userId, myName }: { api: Api; userId: string; myName: string }) {
   const [books, setBooks] = useState<Row[] | null>(null);
   const [msg, setMsg] = useState(''); const [busy, setBusy] = useState('');
   const [open, setOpen] = useState<{ book: Book; state: ReadingState | null; names: Record<string, string> } | null>(null);
   const [assign, setAssign] = useState<Row | null>(null);
-  const [query, setQuery] = useState(''); const [drag, setDrag] = useState(false);
+  const [query, setQuery] = useState('');
   const [states, setStates] = useState<Map<string, ReadingState>>(new Map());
   const [settings, setSettings] = useSettings();
   const input = useRef<HTMLInputElement>(null); const reviseInput = useRef<HTMLInputElement>(null);
@@ -36,6 +38,7 @@ export default function ServerLibrary({ api, userId, myName }: { api: Api; userI
     }
     setBusy(''); refresh();
   };
+  const dragging = useFileDrop(files => upload(files), !open && !assign && !busy);     // 화면 어디에 놓아도 업로드
   const read = async (id: string) => {
     try {
       const authors = await api.books.authors().catch(() => []);
@@ -49,8 +52,8 @@ export default function ServerLibrary({ api, userId, myName }: { api: Api; userI
 
   const visible = books ? filterBooks(books, query, b => [b.title, b.author_name]) : [];
   return (
-    <section className={'lb' + (drag ? ' dragover' : '')} onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
-      onDrop={e => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files); }}>
+    <section className="lb">
+      <DropOverlay show={dragging}>놓으면 원고가 올라가요</DropOverlay>
       <div className="lb-head">
         <h2 className="lb-title">원고{books && <span className="count">{books.length}편</span>}</h2>
         <button type="button" className="primary" disabled={!!busy} onClick={() => input.current?.click()}>{busy ? <><span className="spinner on-dark" aria-hidden="true" />올리는 중</> : '원고 올리기'}</button>
@@ -70,10 +73,10 @@ export default function ServerLibrary({ api, userId, myName }: { api: Api; userI
               facts={[`${b.chapter_count}회차`, `${b.char_count.toLocaleString()}자`]} progress={progressOf(states.get(b.id), b.chapter_count)} status={status} onOpen={() => read(b.id)}
               actions={<>
                 <button type="button" className="bk-act" onClick={() => setAssign(b)}>작가·공유</button>
-                <details className="more"><summary className="bk-act">더보기</summary>
-                  <button type="button" className="bk-act" onClick={() => { reviseId.current = b.id; reviseInput.current?.click(); }}>개정본 올리기</button>
-                  <button type="button" className="bk-act danger" onClick={async () => { if (confirm(`‘${b.title}’을 서버에서 삭제할까요?\n작가들의 형광펜·메모도 함께 삭제되고 되돌릴 수 없습니다.`)) { try { await api.books.remove(b.id); } catch (e) { setMsg((e as Error).message); } refresh(); } }}>삭제</button>
-                </details></>} />; })}</ul>}
+                <ActionMenu label="더보기" items={[
+                  { label: '개정본 올리기', onSelect: () => { reviseId.current = b.id; reviseInput.current?.click(); } },
+                  { label: '삭제', danger: true, onSelect: async () => { if (confirm(`‘${b.title}’을 서버에서 삭제할까요?\n작가들의 형광펜·메모도 함께 삭제되고 되돌릴 수 없습니다.`)) { try { await api.books.remove(b.id); } catch (e) { setMsg((e as Error).message); } refresh(); } } },
+                ]} /></>} />; })}</ul>}
       {assign && <AssignPanel api={api} book={assign} onClose={() => { setAssign(null); refresh(); }} />}
     </section>
   );

@@ -6,6 +6,7 @@ import type { Book, BookSummary, ReadingState } from './core/model';
 import Viewer from './viewer/Viewer';
 import BookRow from './ui/BookRow';
 import Empty from './ui/Empty';
+import { DropOverlay, useFileDrop } from './ui/useFileDrop';
 import LibSearch from './LibSearch';
 import { filterBooks } from './core/search';
 
@@ -13,7 +14,7 @@ export default function Library() {
   const [list, setList] = useState<BookSummary[]>([]);
   const [open, setOpen] = useState<{ book: Book; state: ReadingState | null } | null>(null);
   const [settings, setSettings] = useSettings();
-  const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false); const [drag, setDrag] = useState(false);
+  const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null); const [query, setQuery] = useState('');
   const refresh = useCallback(async () => setList(await repo.listBooks()), []);
   useEffect(() => { refresh(); }, [refresh]);
@@ -25,14 +26,15 @@ export default function Library() {
     }
     setBusy(false); refresh();
   };
+  const dragging = useFileDrop(files => add(files), !open && !busy);
   const read = async (id: string) => { const book = await repo.getBook(id); if (book) setOpen({ book, state: await repo.getState(id) }); };
 
   if (open) return <Viewer repo={repo} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
     onProgress={s => repo.saveState(s)} onClose={() => { setOpen(null); refresh(); }} />;
   const visible = filterBooks(list, query, b => [b.title, b.author]);
   return (
-    <section className={'lb' + (drag ? ' dragover' : '')} onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
-      onDrop={e => { e.preventDefault(); setDrag(false); add(e.dataTransfer.files); }}>
+    <section className="lb">
+      <DropOverlay show={dragging}>놓으면 이 기기에 추가돼요</DropOverlay>
       <div className="lb-head">
         <h2 className="lb-title">이 기기의 원고<span className="count">{list.length}편</span></h2>
         <button type="button" className="primary" onClick={() => input.current?.click()} disabled={busy}>{busy ? <><span className="spinner on-dark" aria-hidden="true" />추가하는 중</> : '파일 추가'}</button>

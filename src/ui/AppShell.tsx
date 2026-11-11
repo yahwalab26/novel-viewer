@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useDismiss } from './useDismiss';
 import { Logo } from './Logo';
 import { SETTLE_URL } from '../config';
 import { useInstall } from '../Install';
@@ -8,13 +9,8 @@ export interface Account { name: string; email: string; role: 'editor' | 'author
 /** 상단 계정 메뉴: 이름을 누르면 계정 정보·비밀번호 변경(정산 사이트)·앱 설치·로그아웃 */
 export function AccountMenu({ account, onLogout }: { account: Account; onLogout: () => void }) {
   const [open, setOpen] = useState(false); const box = useRef<HTMLDivElement>(null); const btn = useRef<HTMLButtonElement>(null); const inst = useInstall();
-  useEffect(() => {
-    if (!open) return;
-    const down = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); btn.current?.focus(); } };
-    document.addEventListener('pointerdown', down); document.addEventListener('keydown', key);
-    return () => { document.removeEventListener('pointerdown', down); document.removeEventListener('keydown', key); };
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(open, close, box, btn);
   const label = account.name || account.email;
   return (
     <div className="acct-wrap" ref={box}>

@@ -1,5 +1,6 @@
 // 로컬 저장소(IndexedDB). 서버 단계에서 같은 인터페이스의 RemoteRepository로 교체한다.
 import { get, set, del, keys } from 'idb-keyval';
+import { migrateSettings } from '../core/settings';
 import type { Annotation, Book, BookSummary, LibraryRepository, ReadingState, Bookmark } from '../core/model';
 
 export const localRepo: LibraryRepository = {
@@ -23,5 +24,5 @@ export const localRepo: LibraryRepository = {
   async deleteAnnotation(bookId, id) { const l = await this.listAnnotations(bookId); await set('ann:' + bookId, l.filter(x => x.id !== id)); },
   async saveBookmark(b) { const l = await this.listBookmarks(b.bookId); await set('bm:' + b.bookId, [...l.filter(x => x.id !== b.id), b]); },
 };
-export const loadSettings = (def: any) => { try { return { ...def, ...JSON.parse(localStorage.getItem('nv.settings') || '{}') }; } catch { return def; } };
+export const loadSettings = (def: any) => { try { return { ...def, ...migrateSettings(JSON.parse(localStorage.getItem('nv.settings') || '{}')) }; } catch { return def; } };
 export const persistSettings = (s: unknown) => { try { localStorage.setItem('nv.settings', JSON.stringify(s)); } catch {} };

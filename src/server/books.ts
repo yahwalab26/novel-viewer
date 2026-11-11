@@ -79,6 +79,8 @@ export function createBooksApi(sb: Sb) {
 export const annToRow = (a: Annotation) => ({ id: a.id, book_id: a.bookId, chapter_id: a.chapterId, block_index: a.blockIndex, start_pos: a.start, end_pos: a.end, quote: a.quote, color: a.color, memo: a.memo ?? null, created_at: new Date(a.createdAt).toISOString(), updated_at: new Date(a.updatedAt).toISOString() });
 export const rowToAnn = (r: any): Annotation => ({ id: r.id, bookId: r.book_id, authorId: r.author_id, chapterId: r.chapter_id, blockIndex: r.block_index, start: r.start_pos, end: r.end_pos, quote: r.quote, color: r.color, memo: r.memo ?? undefined, createdAt: Date.parse(r.created_at), updatedAt: Date.parse(r.updated_at) });
 
+/** reading_states.progress 열이 아직 없는 서버(004 SQL 실행 전)인지 */
+export const noProgressColumn = (e: { code?: string; message?: string }) => e.code === '42703' || e.code === 'PGRST204' || /progress/i.test(e.message ?? '');
 export const bmToRow = (b: Bookmark) => ({ id: b.id, book_id: b.bookId, chapter_id: b.chapterId, block_index: b.blockIndex, label: b.label ?? null, created_at: new Date(b.createdAt).toISOString() });
 export const rowToBm = (r: any): Bookmark => ({ id: r.id, bookId: r.book_id, chapterId: r.chapter_id, blockIndex: r.block_index, label: r.label ?? undefined, createdAt: Date.parse(r.created_at) });
 
@@ -95,9 +97,10 @@ export function createRemoteRepo(sb: Sb): AnnotationStore & BookmarkStore & {
     async deleteBookmark(_bookId, id) { const { error } = await sb.from('bookmarks').delete().eq('id', id); if (error) throw new Error(error.message); },
     /** 서재 목록의 읽기 진행 표시용: 내가 읽은 모든 원고의 마지막 위치 */
     async listStates() {
-      const { data, error } = await sb.from('reading_states').select('book_id,chapter_id,updated_at');
-      if (error) { log('이어읽기 목록', error); return []; }
-      return (data ?? []).map((d: any) => ({ bookId: d.book_id, chapterId: d.chapter_id, blockIndex: 0, updatedAt: Date.parse(d.updated_at) }));
+      let r: any = await sb.from('reading_states').select('book_id,chapter_id,updated_at,progress');
+      if (r.error && noProgressColumn(r.error)) r = await sb.from('reading_states').select('book_id,chapter_id,updated_at');     // 004 SQL 실행 전
+      if (r.error) { log('이어읽기 목록', r.error); return []; }
+      return (r.data ?? []).map((d: any) => ({ bookId: d.book_id, chapterId: d.chapter_id, blockIndex: 0, updatedAt: Date.parse(d.updated_at), progress: typeof d.progress === 'number' ? d.progress : undefined }));
     },
     async getState(bookId) {
       const { data } = await sb.from('reading_states').select('book_id,chapter_id,block_index,updated_at').eq('book_id', bookId).maybeSingle();
@@ -105,7 +108,9 @@ export function createRemoteRepo(sb: Sb): AnnotationStore & BookmarkStore & {
     },
     async saveState(s) {
       const uid = (await sb.auth.getSession()).data.session?.user.id; if (!uid) return;
-      const { error } = await sb.from('reading_states').upsert({ user_id: uid, book_id: s.bookId, chapter_id: s.chapterId, block_index: s.blockIndex, updated_at: new Date(s.updatedAt).toISOString() }, { onConflict: 'user_id,book_id' });
+      const row: Record<string, unknown> = { user_id: uid, book_id: s.bookId, chapter_id: s.chapterId, block_index: s.blockIndex, updated_at: new Date(s.updatedAt).toISOString() };
+      let { error } = await sb.from('reading_states').upsert(s.progress === undefined ? row : { ...row, progress: s.progress }, { onConflict: 'user_id,book_id' });
+      if (error && s.progress !== undefined && noProgressColumn(error)) ({ error } = await sb.from('reading_states').upsert(row, { onConflict: 'user_id,book_id' }));   // 004 SQL 실행 전
       if (error) log('이어읽기 저장', error);
     },
   };

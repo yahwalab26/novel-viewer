@@ -23,6 +23,7 @@ export type BookSummary = Omit<Book, 'chapters'> & { chapterCount: number; charC
 
 export interface ReadingState {   // 이어읽기
   bookId: string; chapterId: string; blockIndex: number; updatedAt: number;
+  progress?: number;            // 원고 전체 기준 읽은 비율 0~1 (서재 진행 막대용)
 }
 export interface Bookmark { id: string; bookId: string; chapterId: string; blockIndex: number; label?: string; createdAt: number }
 

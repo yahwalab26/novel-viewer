@@ -28,7 +28,7 @@
 .lb-title { margin: 0; font-size: var(--fs-xl); font-weight: 700; line-height: 1.2; letter-spacing: -.02em; }
 .lb-title .count { margin-left: var(--s2); color: var(--mute); font-size: var(--fs-md); font-weight: 400; letter-spacing: 0; }
 .lb-note { margin: calc(-1 * var(--s2)) 0 var(--s4); color: var(--mute); font-size: var(--fs-sm); }
-.lb-search { display: block; width: 100%; height: 48px; margin: 0 0 var(--s4); padding: 0; border: 0; border-bottom: 1px solid var(--line-strong); border-radius: 0; background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-md); outline: none; }
+.lb-search { display: block; width: 100%; height: 48px; margin: 0; padding: 0; border: 0; border-bottom: 1px solid var(--line-strong); border-radius: 0; background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-md); outline: none; }
 .lb-search:focus { box-shadow: 0 1px 0 0 var(--ink); }
 
 /* 원고 목록: 위쪽 굵은 선 하나가 목록의 시작, 항목 사이는 가는 선 */
@@ -70,3 +70,8 @@
 .drop-box { display: flex; flex-direction: column; align-items: center; gap: var(--s2); margin: var(--s5); padding: var(--s7) var(--s6); border: 2px dashed var(--ink); text-align: center; }
 .drop-box strong { font-size: var(--fs-xl); letter-spacing: -.02em; }
 .drop-box span { color: var(--mute); font-size: var(--fs-sm); }
+
+/* 검색창이 있으면 그 밑줄 하나만 목록의 시작선으로 쓴다(선이 두 줄로 겹치지 않게) */
+.lb-search + .bk-list, .lb-search + .empty { border-top: 0; }
+.menu.up { top: auto; bottom: calc(100% + 6px); }
+.menu.menu-left.at-right { left: auto; right: 0; }

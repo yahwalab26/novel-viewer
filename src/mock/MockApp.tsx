@@ -9,7 +9,7 @@ import AppShell from '../ui/AppShell';
 import Library from '../Library';
 import { createMockApi } from './mockApi';
 
-/** 개발 전용 화면 목록(서버 없이 모양 확인): /?mock=login | login-error | loading | none | none-notset | none-disabled | none-failed | schema | error | crash | editor | editor-empty | editor-local | author | author-empty */
+/** 개발 전용 화면 목록(서버 없이 모양 확인): /?mock=login | login-error | loading | none | none-notset | none-disabled | none-failed | schema | error | crash | editor | editor-many | editor-empty | editor-local | author | author-empty */
 const editor = { name: '김편집', email: 'editor@example.com', role: 'editor' as const }, author = { name: '이서연', email: 'seoyeon@example.com', role: 'author' as const };
 const Boom = (): ReactNode => { throw new Error('목업: 화면 오류 예시'); };
 const noop = () => {};
@@ -27,6 +27,7 @@ export default function MockApp() {
     case 'error': return <Notice title="서버 연결 오류" onLogout={noop} onRetry={noop}>네트워크 연결을 확인해 주세요</Notice>;
     case 'crash': return <ErrorBoundary><Boom /></ErrorBoundary>;
     case 'editor': return <EditorHome api={createMockApi()} userId="e1" account={editor} onLogout={noop} />;
+    case 'editor-many': return <EditorHome api={createMockApi({ many: true })} userId="e1" account={editor} onLogout={noop} />;
     case 'editor-empty': return <EditorHome api={createMockApi({ empty: true })} userId="e1" account={editor} onLogout={noop} />;
     case 'editor-local': return <EditorHome api={createMockApi()} userId="e1" account={editor} onLogout={noop} initialTab="local" />;
     case 'author': return <AuthorHome api={createMockApi()} userId="a1" account={author} onLogout={noop} />;

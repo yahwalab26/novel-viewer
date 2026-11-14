@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { useDismiss } from './useDismiss';
+import { useMenuPlacement } from './placeMenu';
 import { Logo } from './Logo';
 import { SETTLE_URL } from '../config';
 import { useInstall } from '../Install';
@@ -10,6 +11,7 @@ export interface Account { name: string; email: string; role: 'editor' | 'author
 export function AccountMenu({ account, onLogout }: { account: Account; onLogout: () => void }) {
   const [open, setOpen] = useState(false); const box = useRef<HTMLDivElement>(null); const btn = useRef<HTMLButtonElement>(null); const inst = useInstall();
   const close = useCallback(() => setOpen(false), []);
+  const menu = useRef<HTMLDivElement>(null); const pos = useMenuPlacement(open, btn, menu);
   useDismiss(open, close, box, btn);
   const label = account.name || account.email;
   return (
@@ -19,7 +21,7 @@ export function AccountMenu({ account, onLogout }: { account: Account; onLogout:
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" /></svg>
       </button>
       {open && (
-        <div className="menu" role="menu">
+        <div ref={menu} className={'menu' + (pos.up ? ' up' : '')} role="menu">
           <div className="menu-id"><b>{label}</b><small>{account.email}</small><span className={'chip' + (account.role === 'editor' ? ' solid' : '')}>{account.role === 'editor' ? '편집자' : '작가'}</span></div>
           <a role="menuitem" className="item" href={SETTLE_URL} target="_blank" rel="noopener noreferrer">비밀번호 변경<small>정산 사이트에서 변경합니다</small></a>
           {inst.available && <button type="button" role="menuitem" className="item" onClick={() => { setOpen(false); inst.install(); }}>앱으로 설치</button>}

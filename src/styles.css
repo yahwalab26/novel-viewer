@@ -82,3 +82,10 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .toc .bmrow .bmdel{flex:none;width:auto;min-width:52px;border-bottom:0;padding:0 4px;color:#1a8cff;display:flex;align-items:center;justify-content:center}
 /* 오류 화면·비밀번호 변경 */
 
+
+/* 읽기 화면 진행률: 아래쪽 가는 선 + 오른쪽 아래 작은 숫자(독서 테마 글자색을 따름) */
+.vprog{position:absolute;left:0;right:0;bottom:0;height:3px;z-index:3;pointer-events:none;background:color-mix(in srgb,var(--fg) 12%,transparent)}
+.vprog i{display:block;height:100%;background:var(--fg);opacity:.7}
+.vpct{position:absolute;right:calc(var(--padx) + var(--padx-extra,0px));bottom:calc(env(safe-area-inset-bottom) + 9px);z-index:3;pointer-events:none;color:var(--fg);opacity:.55;font-size:11px;font-variant-numeric:tabular-nums;font-family:var(--font)}
+
+.endnav button,.endnav .primary{font:inherit;font-weight:600}

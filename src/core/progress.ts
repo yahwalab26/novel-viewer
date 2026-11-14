@@ -25,3 +25,8 @@ export function readingProgress(chapters: Chapter[], ci: number, blockIndex: num
 export function byRecentRead<T extends { id: string }>(list: T[], states: Map<string, StateLike>): T[] {
   return [...list].sort((a, b) => (states.get(b.id)?.updatedAt ?? 0) - (states.get(a.id)?.updatedAt ?? 0));
 }
+
+/** 화면에 보이는 위치 → 진행률. 마지막 회차의 끝까지 내려갔을 때만 100% (atEnd) */
+export function viewProgress(chapters: Chapter[], ci: number, blockIndex: number, atEnd: boolean): number {
+  return ci >= chapters.length - 1 && atEnd ? 1 : readingProgress(chapters, ci, blockIndex);
+}

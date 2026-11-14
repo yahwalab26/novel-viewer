@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { Annotation, AnnotationStore, Book, Bookmark, BookmarkStore, ReadingState } from '../core/model';
 import { readSelection, type Picked } from './selection';
 import { filterAnns, installProtection, isMine } from './protect';
-import { readingProgress } from '../core/progress';
+import { viewProgress } from '../core/progress';
 import { MemoSheet, NotesPanel, SelectionBar, renderSegs } from './AnnotationUI';
 import type { ViewerSettings } from '../core/settings';
 import SettingsPanel from './SettingsPanel';
@@ -71,14 +71,22 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     if (scroll) { const top = wrap.current!.getBoundingClientRect().top + 8; return Number(kids.find(k => k.getBoundingClientRect().bottom > top)?.dataset.i ?? 0); }
     return Number(kids.find(k => k.offsetLeft >= page * stride.current - 1)?.dataset.i ?? 0);
   }, [scroll, page]);
+  // 진행률: 마지막 회차 끝까지 내려가야 100%. 한 화면에 다 들어가는(스크롤할 수 없는) 짧은 글은 열기만 해서는 100%가 되지 않는다
+  const measure = useCallback((): number => {
+    const w = wrap.current; if (!w) return 0;
+    const atEnd = scroll ? (w.scrollHeight > w.clientHeight + 8 && w.scrollTop + w.clientHeight >= w.scrollHeight - 4) : (pages > 1 && page >= pages - 1);
+    return viewProgress(book.chapters, ci, currentBlock(), atEnd);
+  }, [currentBlock, ci, book, scroll, page, pages]);
   const save = useCallback(() => {
     if (!(flow.current ?? wrap.current)) return;
-    const idx = currentBlock(), w = wrap.current!;
-    // 마지막 회차 끝까지 내려가야 100%. 한 화면에 다 들어가는(스크롤할 수 없는) 짧은 글은 열기만 해서는 100%가 되지 않는다
-    const atEnd = scroll ? (w.scrollHeight > w.clientHeight + 8 && w.scrollTop + w.clientHeight >= w.scrollHeight - 4) : (pages > 1 && page >= pages - 1);
-    const progress = ci >= book.chapters.length - 1 && atEnd ? 1 : readingProgress(book.chapters, ci, idx);
-    onProgress({ bookId: book.id, chapterId: ch.id, blockIndex: idx, updatedAt: Date.now(), progress });
-  }, [currentBlock, ch.id, ci, book, scroll, page, pages, onProgress]);
+    onProgress({ bookId: book.id, chapterId: ch.id, blockIndex: currentBlock(), updatedAt: Date.now(), progress: measure() });
+  }, [currentBlock, measure, ch.id, book.id, onProgress]);
+  const [prog, setProg] = useState(0);                      // 화면에 보여 주는 읽은 비율(0~1)
+  const progTimer = useRef<number>();
+  const refreshProg = useCallback(() => setProg(measure()), [measure]);
+  const scheduleProg = () => { if (progTimer.current) return; progTimer.current = window.setTimeout(() => { progTimer.current = undefined; refreshProg(); }, 120); };
+  useEffect(() => { refreshProg(); }, [refreshProg, tick, s.fontSizeLevel, s.lineHeight, s.paragraphGap, s.paragraphWidthLevel, s.fontFamily, s.align]);
+  useEffect(() => () => clearTimeout(progTimer.current), []);
   const timer = useRef<number>();
   const later = () => { clearTimeout(timer.current); timer.current = window.setTimeout(save, 500); };
   useEffect(later, [ci, page, scroll]); // eslint-disable-line
@@ -171,7 +179,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     '--w': WIDTHS[s.paragraphWidthLevel - 1] + 'px', '--ff': FONTS[s.fontFamily]?.css ?? FONTS.original.css,
     '--ta': s.align === 'original' ? 'left' : s.align,
   } as CSSProperties;
-  const info = (k: string) => k === 'time' ? now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : k === 'chapter' ? ch.title : k === 'page' ? `${page + 1} / ${pages}` : k === 'percent' ? `${Math.round(((ci + (pages > 1 ? page / (pages - 1) : 0)) / book.chapters.length) * 100)}%` : '';
+  const info = (k: string) => k === 'time' ? now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : k === 'chapter' ? ch.title : k === 'page' ? `${page + 1} / ${pages}` : k === 'percent' ? `${Math.round(prog * 100)}%` : '';
   const content = (<>
     <h2 className="ch-title">{ch.title}</h2>
     {ch.blocks.map((b, i) => b.type === 'p' ? <p key={i} data-i={i}>{renderSegs(b.text, byBlock.get(i), meId)}</p>
@@ -187,12 +195,14 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
         <button onClick={() => setPanel(panel === 'toc' ? null : 'toc')}>목차</button>
         <button onClick={() => setPanel(panel === 'notes' ? null : 'notes')}>메모{anns.length ? ` ${anns.length}` : ''}</button>
         <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')} aria-label="설정">Aa</button></div>
-      <div ref={wrap} className="wrap" onClick={tap} onScroll={scroll ? later : e => { e.currentTarget.scrollLeft = 0; e.currentTarget.scrollTop = 0; }}>
+      <div ref={wrap} className="wrap" onClick={tap} onScroll={scroll ? () => { later(); scheduleProg(); } : e => { e.currentTarget.scrollLeft = 0; e.currentTarget.scrollTop = 0; }}>
         {scroll ? <article className="flow">{content}
           <nav className="endnav">{ci > 0 && <button onClick={() => moveChapter(-1)}>이전 화</button>}{!lastChapter ? <button className="primary" onClick={() => moveChapter(1)}>다음 화</button> : <span>마지막 회차입니다</span>}</nav></article>
           : <div ref={flow} className={`flow pgflow anim-${page % 2}`} style={{ transform: `translateX(${-page * stride.current}px)` }}>{content}</div>}
       </div>
       {!scroll && <div className="foot"><span>{info(s.bottomInfo.left)}</span><span>{info(s.bottomInfo.right)}</span></div>}
+      <div className="vprog" role="progressbar" aria-label="읽은 비율" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(prog * 100)}><i style={{ width: `${prog * 100}%` }} /></div>
+      {(scroll || s.bottomInfo.right === 'none') && <span className="vpct" aria-hidden="true">{Math.round(prog * 100)}%</span>}
       <div className="dim" style={{ opacity: (1 - s.brightness) * 0.8 }} />
       {sel && !edit && !panel && <SelectionBar note={sel.clamped ? '첫 문단에만 적용돼요' : undefined} onColor={c => { const a = build(c); if (a) saveAnn(a); clearSel(); }} onMemo={() => { const a = build('yellow'); if (a) setEdit({ ann: a, isNew: true }); clearSel(); }} />}
       {edit && <MemoSheet key={edit.ann.id} ann={edit.ann} isNew={edit.isNew} readOnly={edit.readOnly} authorName={names?.[edit.ann.authorId]} onClose={() => setEdit(null)} onDelete={() => { delAnn(edit.ann.id); setEdit(null); }} onSave={a => { saveAnn(a); setEdit(null); }} />}

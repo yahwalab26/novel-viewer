@@ -24,6 +24,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   const [toast, setToast] = useState('');
   const [who, setWho] = useState('all');                  // 표시할 형광펜: all | mine | 작가 id
   const [now, setNow] = useState(() => new Date());
+  const lastTop = useRef(0); const touched = useRef(false);   // 사용자가 직접 스크롤했을 때만 바를 자동으로 숨긴다(이어읽기 위치 복원 스크롤은 제외)
   const wrap = useRef<HTMLDivElement>(null); const flow = useRef<HTMLDivElement>(null);
   const stride = useRef(1); const pending = useRef(state?.blockIndex ?? 0); const goLast = useRef(false);
   const ch = book.chapters[ci]; const scroll = s.mode === 'scroll';
@@ -92,12 +93,20 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   useEffect(later, [ci, page, scroll]); // eslint-disable-line
   useEffect(() => () => clearTimeout(timer.current), []);
 
+  // 스크롤 모드: 맨 위이거나 위로 올리면 상단 바 표시, 아래로 읽어 내려가면 숨김(패널이 열려 있으면 유지)
+  const onScrollBar = () => {
+    later(); scheduleProg();
+    const t = wrap.current!.scrollTop, d = t - lastTop.current; lastTop.current = t;
+    if (t < 48) setBar(true); else if (touched.current && Math.abs(d) > 12) setBar(d < 0);
+  };
   // ── 이동
   const next = useCallback(() => {
+    touched.current = true;
     if (scroll) { const w = wrap.current!; if (w.scrollTop + w.clientHeight >= w.scrollHeight - 4) moveChapter(1); else w.scrollBy({ top: w.clientHeight * 0.9, behavior: 'smooth' }); }
     else if (page < pages - 1) setPage(page + 1); else moveChapter(1);
   }, [scroll, page, pages, moveChapter]);
   const prev = useCallback(() => {
+    touched.current = true;
     if (scroll) { const w = wrap.current!; if (w.scrollTop <= 4) moveChapter(-1, true); else w.scrollBy({ top: -w.clientHeight * 0.9, behavior: 'smooth' }); }
     else if (page > 0) setPage(page - 1); else moveChapter(-1, true);
   }, [scroll, page, moveChapter]);
@@ -189,13 +198,14 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
 
   return (
     <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}`} style={vars}>
-      <div className={'bar top' + (bar ? '' : ' hide')}>
-        <button onClick={onClose} aria-label="서재로">‹</button><span className="ttl">{book.title}</span>
+      <div className={'bar top' + (bar || panel ? '' : ' hide')}>
+        <button className="back" onClick={onClose} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><span className="ttl">{book.title}</span>
         <button onClick={toggleBookmark} aria-label="현재 위치 북마크 추가/삭제">★</button>
         <button onClick={() => setPanel(panel === 'toc' ? null : 'toc')}>목차</button>
         <button onClick={() => setPanel(panel === 'notes' ? null : 'notes')}>메모{anns.length ? ` ${anns.length}` : ''}</button>
-        <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')} aria-label="설정">Aa</button></div>
-      <div ref={wrap} className="wrap" onClick={tap} onScroll={scroll ? () => { later(); scheduleProg(); } : e => { e.currentTarget.scrollLeft = 0; e.currentTarget.scrollTop = 0; }}>
+        <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')}>설정</button></div>
+      {!bar && !panel && <button className="peek" onClick={onClose} aria-label="작품 목록으로"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button>}
+      <div ref={wrap} className="wrap" onClick={tap} onWheel={() => { touched.current = true; }} onTouchMove={() => { touched.current = true; }} onScroll={scroll ? onScrollBar : e => { e.currentTarget.scrollLeft = 0; e.currentTarget.scrollTop = 0; }}>
         {scroll ? <article className="flow">{content}
           <nav className="endnav">{ci > 0 && <button onClick={() => moveChapter(-1)}>이전 화</button>}{!lastChapter ? <button className="primary" onClick={() => moveChapter(1)}>다음 화</button> : <span>마지막 회차입니다</span>}</nav></article>
           : <div ref={flow} className={`flow pgflow anim-${page % 2}`} style={{ transform: `translateX(${-page * stride.current}px)` }}>{content}</div>}

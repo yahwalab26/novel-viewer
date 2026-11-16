@@ -2,7 +2,7 @@
 // - 같은 출처 GET 요청만 처리. Supabase(원고·계정) 등 다른 출처 요청은 절대 건드리지 않아 서버 원고가 기기에 캐시되지 않는다.
 // - 페이지(HTML)는 네트워크 우선 → 새 배포가 바로 반영, 오프라인이면 캐시본 사용.
 // - 정적 파일(해시 이름)은 캐시 우선 + 백그라운드 갱신.
-const CACHE = 'nv-shell-v1';
+const CACHE = 'nv-shell-v2';   // 이름을 바꾸면 옛 캐시가 지워져 새 배포가 바로 보인다
 
 self.addEventListener('install', () => { self.skipWaiting(); });
 self.addEventListener('activate', event => {
@@ -15,7 +15,7 @@ self.addEventListener('activate', event => {
 async function networkFirst(req) {
   const cache = await caches.open(CACHE);
   try {
-    const res = await fetch(req);
+    const res = await fetch(req, { cache: 'no-store' });   // 페이지(HTML)는 브라우저 HTTP 캐시도 거치지 않는다 → 새 버전이 즉시 반영
     if (res && res.ok) cache.put(req, res.clone());
     return res;
   } catch (err) {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { back, clear, navigate, readHash, useRoute } from './core/route';
 import type { Api } from './server/api';
 import type { BookRow as Row } from './server/books';
 import type { Book, ReadingState } from './core/model';
@@ -19,6 +20,7 @@ export default function AuthorHome({ api, userId, account, onLogout }: { api: Ap
   const [msg, setMsg] = useState(''); const [query, setQuery] = useState('');
   const [open, setOpen] = useState<{ book: Book; state: ReadingState | null; allowCopy: boolean } | null>(null);
   const [settings, setSettings] = useSettings();
+  const route = useRoute(); const rid = route?.scope === 's' ? route.id : null;     // 주소에 기록된 읽는 중인 원고
 
   const refresh = useCallback(async () => {
     try {
@@ -28,14 +30,22 @@ export default function AuthorHome({ api, userId, account, onLogout }: { api: Ap
   }, [api]);
   useEffect(() => { refresh(); }, [refresh]);
 
-  const read = async (id: string) => {
-    setMsg('');
-    try { setOpen({ book: await api.books.get(id), state: await api.repo.getState(id), allowCopy: !!copy[id] }); }
-    catch (e) { setMsg('공유가 중단되었거나 열 수 없는 원고입니다'); refresh(); }
-  };
+  // 주소가 읽기(#/read/s/<id>)면 목록·배정(복사 허용 여부 포함)을 다 불러온 뒤에 연다 — 모르는 상태로 열면 복사 방지가 어긋난다
+  useEffect(() => {
+    if (!rid) { setOpen(null); return; }
+    if (books === null || open?.book.id === rid) return;
+    let alive = true; setMsg('');
+    (async () => {
+      try { const book = await api.books.get(rid), state = await api.repo.getState(rid); if (alive) setOpen({ book, state, allowCopy: !!copy[rid] }); }
+      catch { if (alive) { setMsg('공유가 중단되었거나 열 수 없는 원고입니다'); clear(); refresh(); } }
+    })();
+    return () => { alive = false; };
+  }, [rid, books]); // eslint-disable-line react-hooks/exhaustive-deps
+  const read = (id: string) => navigate(readHash('s', id));
 
-  if (open) return <Viewer repo={api.repo} meId={userId} protect={!open.allowCopy} book={open.book} state={open.state}
-    settings={settings} onSettings={setSettings} onProgress={s => api.repo.saveState(s)} onClose={() => { setOpen(null); refresh(); }} />;
+  if (rid && !open) return <AppShell account={account} onLogout={onLogout}><p className="loading"><span className="spinner" aria-hidden="true" />불러오는 중…</p></AppShell>;
+  if (open && rid) return <Viewer repo={api.repo} meId={userId} protect={!open.allowCopy} book={open.book} state={open.state}
+    settings={settings} onSettings={setSettings} onProgress={s => api.repo.saveState(s)} onClose={() => { back(); refresh(); }} />;
 
   const visible = books ? byRecentRead(filterBooks(books, query, b => [b.title]), states) : [];
   return (

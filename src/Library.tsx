@@ -4,6 +4,7 @@ import { localRepo as repo } from './store/repo';
 import { useSettings } from './store/useSettings';
 import type { Book, BookSummary, ReadingState } from './core/model';
 import Viewer from './viewer/Viewer';
+import { back, clear, navigate, readHash, useRoute } from './core/route';
 import BookRow from './ui/BookRow';
 import Empty from './ui/Empty';
 import { DropOverlay, useFileDrop } from './ui/useFileDrop';
@@ -14,6 +15,7 @@ export default function Library() {
   const [list, setList] = useState<BookSummary[]>([]);
   const [open, setOpen] = useState<{ book: Book; state: ReadingState | null } | null>(null);
   const [settings, setSettings] = useSettings();
+  const route = useRoute(); const rid = route?.scope === 'l' ? route.id : null;     // 주소에 기록된 읽는 중인 원고
   const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null); const [query, setQuery] = useState('');
   const refresh = useCallback(async () => setList(await repo.listBooks()), []);
@@ -27,10 +29,18 @@ export default function Library() {
     setBusy(false); refresh();
   };
   const dragging = useFileDrop(files => add(files), !open && !busy);
-  const read = async (id: string) => { const book = await repo.getBook(id); if (book) setOpen({ book, state: await repo.getState(id) }); };
+  useEffect(() => {
+    if (!rid) { setOpen(null); return; }
+    if (open?.book.id === rid) return;
+    let alive = true;
+    (async () => { const book = await repo.getBook(rid); if (!alive) return; if (book) setOpen({ book, state: await repo.getState(rid) }); else { setMsg('이 기기에서 찾을 수 없는 원고입니다'); clear(); } })();
+    return () => { alive = false; };
+  }, [rid]); // eslint-disable-line react-hooks/exhaustive-deps
+  const read = (id: string) => navigate(readHash('l', id));
 
-  if (open) return <Viewer repo={repo} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
-    onProgress={s => repo.saveState(s)} onClose={() => { setOpen(null); refresh(); }} />;
+  if (rid && !open) return <p className="loading"><span className="spinner" aria-hidden="true" />불러오는 중…</p>;
+  if (open && rid) return <Viewer repo={repo} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
+    onProgress={s => repo.saveState(s)} onClose={() => { back(); refresh(); }} />;
   const visible = filterBooks(list, query, b => [b.title, b.author]);
   return (
     <section className="lb">

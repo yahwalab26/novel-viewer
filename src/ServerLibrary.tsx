@@ -5,6 +5,7 @@ import type { Book, ReadingState } from './core/model';
 import { parseFile, SUPPORTED } from './parsers';
 import { useSettings } from './store/useSettings';
 import Viewer from './viewer/Viewer';
+import { back, clear, navigate, readHash, useRoute } from './core/route';
 import AssignPanel from './AssignPanel';
 import LibSearch from './LibSearch';
 import { filterBooks } from './core/search';
@@ -20,6 +21,7 @@ export default function ServerLibrary({ api, userId, myName }: { api: Api; userI
   const [open, setOpen] = useState<{ book: Book; state: ReadingState | null; names: Record<string, string> } | null>(null);
   const [assign, setAssign] = useState<Row | null>(null);
   const [query, setQuery] = useState('');
+  const route = useRoute(); const rid = route?.scope === 's' ? route.id : null;     // 주소에 기록된 읽는 중인 원고
   const [states, setStates] = useState<Map<string, ReadingState>>(new Map());
   const [settings, setSettings] = useSettings();
   const input = useRef<HTMLInputElement>(null); const reviseInput = useRef<HTMLInputElement>(null);
@@ -39,16 +41,25 @@ export default function ServerLibrary({ api, userId, myName }: { api: Api; userI
     setBusy(''); refresh();
   };
   const dragging = useFileDrop(files => upload(files), !open && !assign && !busy);     // 화면 어디에 놓아도 업로드
-  const read = async (id: string) => {
-    try {
-      const authors = await api.books.authors().catch(() => []);
-      const names: Record<string, string> = { [userId]: myName, ...Object.fromEntries(authors.map(a => [a.id, a.name || a.email])) };
-      setOpen({ book: await api.books.get(id), state: await api.repo.getState(id), names });
-    } catch (e) { setMsg((e as Error).message); }
-  };
+  useEffect(() => {
+    if (!rid) { setOpen(null); return; }
+    if (open?.book.id === rid) return;
+    let alive = true;
+    (async () => {
+      try {
+        const authors = await api.books.authors().catch(() => []);
+        const names: Record<string, string> = { [userId]: myName, ...Object.fromEntries(authors.map(a => [a.id, a.name || a.email])) };
+        const book = await api.books.get(rid), state = await api.repo.getState(rid);
+        if (alive) setOpen({ book, state, names });
+      } catch (e) { if (alive) { setMsg((e as Error).message); clear(); } }
+    })();
+    return () => { alive = false; };
+  }, [rid]); // eslint-disable-line react-hooks/exhaustive-deps
+  const read = (id: string) => navigate(readHash('s', id));
 
-  if (open) return <Viewer repo={api.repo} meId={userId} names={open.names} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
-    onProgress={s => api.repo.saveState(s)} onClose={() => { setOpen(null); loadStates(); }} />;
+  if (rid && !open) return <p className="loading"><span className="spinner" aria-hidden="true" />불러오는 중…</p>;
+  if (open && rid) return <Viewer repo={api.repo} meId={userId} names={open.names} book={open.book} state={open.state} settings={settings} onSettings={setSettings}
+    onProgress={s => api.repo.saveState(s)} onClose={() => { back(); loadStates(); }} />;
 
   const visible = books ? filterBooks(books, query, b => [b.title, b.author_name]) : [];
   return (

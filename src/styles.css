@@ -40,17 +40,19 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 /* 형광펜·메모 */
-mark.hl{color:inherit;border-radius:3px;padding:0 1px;cursor:pointer}
-.hl-yellow{background:rgba(255,214,10,.5)}.hl-green{background:rgba(76,217,100,.45)}.hl-pink{background:rgba(255,105,180,.4)}.hl-blue{background:rgba(70,160,255,.45)}
+mark.hl{color:#1a1a1a;border-radius:3px;padding:0 1px;cursor:pointer}
+:root{--hl-yellow:#ffe94d;--hl-green:#8ff06a;--hl-pink:#ff9fd0;--hl-blue:#7fd4ff}   /* 흔히 쓰는 형광펜 4색: 노랑·연두·분홍·하늘 — 불투명 + 어두운 글자로 어떤 배경(테마)에서도 선명 */
+.hl-yellow{background:var(--hl-yellow)}.hl-green{background:var(--hl-green)}.hl-pink{background:var(--hl-pink)}.hl-blue{background:var(--hl-blue)}
 mark.memo{border-bottom:2px dotted currentColor}
-.selbar{position:absolute;z-index:9;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 24px);display:flex;gap:10px;align-items:center;background:#171717;padding:10px 14px;border-radius:999px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
-.dot{width:34px;height:34px;border-radius:50%;border:2px solid #fff3;padding:0}.dot.sel{border:3px solid #fff}
-.memo-btn{background:#1a8cff;color:#fff;border:0;border-radius:999px;padding:0 16px;height:36px;font-weight:600}
+.selbar{position:absolute;z-index:9;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-wrap:nowrap;gap:clamp(6px,2vw,10px);align-items:center;width:max-content;max-width:calc(100% - 24px);background:#171717;color:#eee;padding:8px 12px;border-radius:999px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.hl-dot{flex:none;width:clamp(28px,8.5vw,34px);height:clamp(28px,8.5vw,34px);border-radius:50%;border:2px solid #fff3;padding:0}.hl-dot.sel{border:3px solid #fff}
+.hl-dot.hl-yellow{background:var(--hl-yellow)}.hl-dot.hl-green{background:var(--hl-green)}.hl-dot.hl-pink{background:var(--hl-pink)}.hl-dot.hl-blue{background:var(--hl-blue)}
+.memo-btn{flex:none;white-space:nowrap;background:#1a8cff;color:#fff;border:0;border-radius:999px;padding:0 14px;height:36px;font-weight:600}
 .sheet .quote{margin:14px 0 12px;padding:8px 12px;border-left:3px solid #1a8cff;color:#bbb;font-size:.9rem;max-height:90px;overflow:auto}
 .sheet textarea{width:100%;background:#262626;color:#eee;border:1px solid #3a3a3c;border-radius:10px;padding:12px;font:inherit;resize:vertical;margin-top:12px}
 .colors{display:flex;gap:12px}.actions{display:flex;justify-content:flex-end;gap:10px;margin:14px 0 4px}.danger{background:none;border:1px solid #c0392b;color:#ff6b5e;border-radius:10px;padding:0 16px;min-height:44px}
 .note{display:block;margin-top:6px;color:#bbb;font-size:.85rem;white-space:pre-wrap}.toc li button>span{flex:1;padding-right:12px}
-.selnote{color:#bbb;font-size:.75rem;margin-left:4px}
+.selnote{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#bbb;font-size:.75rem;margin-left:4px}   /* 좁으면 …으로 줄임 */
 /* 로그인·계정 */
 .sub{margin:0;color:#777}
 /* 서버 서재·배정 */
@@ -92,3 +94,4 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .vpct{position:absolute;right:calc(var(--padx) + var(--padx-extra,0px));bottom:calc(env(safe-area-inset-bottom) + 9px);z-index:3;pointer-events:none;color:var(--fg);opacity:.55;font-size:11px;font-variant-numeric:tabular-nums;font-family:var(--font)}
 
 .endnav button,.endnav .primary{font:inherit;font-weight:600}
+.vver{position:absolute;left:calc(var(--padx) + var(--padx-extra,0px));bottom:calc(env(safe-area-inset-bottom) + 9px);z-index:3;pointer-events:none;color:var(--fg);opacity:.4;font-size:11px;font-variant-numeric:tabular-nums;font-family:var(--font)}

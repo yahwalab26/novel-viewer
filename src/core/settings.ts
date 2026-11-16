@@ -2,6 +2,11 @@
 export const THEMES = ['white','ivory','silver','gray','charcoal','forest','paper'] as const;
 export type Theme = typeof THEMES[number];
 
+/** 화면 크기 미리보기: auto=실제 화면 그대로 */
+export type Device = 'auto' | 'mobile' | 'tablet' | 'desktop';
+export const DEVICES: [Device, string][] = [['auto', '자동'], ['mobile', '모바일'], ['tablet', '태블릿'], ['desktop', 'PC']];
+export const DEVICE_SIZE: Record<Exclude<Device, 'auto'>, { w: number; h: number }> = { mobile: { w: 390, h: 844 }, tablet: { w: 820, h: 1180 }, desktop: { w: 1280, h: 800 } };
+
 export interface ViewerSettings {
   // 화면
   theme: Theme; brightness: number;                  // 0~1
@@ -12,6 +17,7 @@ export interface ViewerSettings {
   paragraphGap: 'original' | number;
   paragraphWidthLevel: number;                        // 1~5 (기본 3, 좌우 여백)
   align: 'original' | 'left' | 'justify';
+  device?: Device;                                    // 화면 크기 미리보기(없으면 auto)
   v?: number;                                         // 저장된 설정의 버전(기본값을 바꿀 때 옛 저장값을 이전하는 데 사용)
   highlight: boolean;                                 // 형광펜 보기
   // 읽기 방식
@@ -33,7 +39,7 @@ export function migrateSettings(stored: Record<string, unknown>): Record<string,
 }
 export const DEFAULT_SETTINGS: ViewerSettings = {
   v: SETTINGS_VERSION,
-  theme: 'ivory', brightness: 1, fontFamily: 'original', fontSizeLevel: 5, lineHeight: 'original',
+  device: 'auto', theme: 'ivory', brightness: 1, fontFamily: 'original', fontSizeLevel: 5, lineHeight: 'original',
   paragraphGap: 'original', paragraphWidthLevel: 3, align: 'justify', highlight: true,
   mode: 'scroll', tapZones: { left: 'prev', right: 'next' }, verticalTapPaging: false,
   pageTurnEffect: 'fade', twoPageLandscape: false, bottomInfo: { left: 'none', right: 'none' },

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { THEMES, DEFAULT_SETTINGS, type ViewerSettings } from '../core/settings';
+import DeviceSwitch from './DeviceSwitch';
 import { THEME_COLORS, FONTS, LH_DEFAULT, GAP_DEFAULT } from './theme';
 
 type P = { s: ViewerSettings; set: (p: Partial<ViewerSettings>) => void; close: () => void };
@@ -29,6 +30,7 @@ export default function SettingsPanel({ s, set, close }: P) {
     <div className="panel" role="dialog" aria-label="뷰어 설정" onClick={e => e.stopPropagation()}>
       <div className="phead"><b>뷰어 설정</b><button className="link" onClick={close}>닫기</button></div>
       <div className="pbody">
+        <div className="devrow"><div className="lbl">화면 크기</div><DeviceSwitch value={s.device ?? 'auto'} onChange={device => set({ device })} /></div>
         <div className="themes" role="radiogroup" aria-label="배경색">{THEMES.map(t =>
           <button key={t} role="radio" aria-checked={s.theme === t} aria-label={THEME_COLORS[t].label}
             className={s.theme === t ? 'sel' : ''} style={{ background: THEME_COLORS[t].bg }} onClick={() => set({ theme: t })} />)}</div>

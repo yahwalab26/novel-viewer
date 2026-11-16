@@ -4,7 +4,8 @@ import { readSelection, type Picked } from './selection';
 import { filterAnns, installProtection, isMine } from './protect';
 import { viewProgress } from '../core/progress';
 import { MemoSheet, NotesPanel, SelectionBar, renderSegs } from './AnnotationUI';
-import type { ViewerSettings } from '../core/settings';
+import { DEVICE_SIZE, type ViewerSettings } from '../core/settings';
+import DeviceSwitch from './DeviceSwitch';
 import SettingsPanel from './SettingsPanel';
 import NavPanel from './NavPanel';
 import { THEME_COLORS, FONT_SIZES, FONTS, WIDTHS, LH_DEFAULT, GAP_DEFAULT } from './theme';
@@ -17,6 +18,8 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   const [panel, setPanel] = useState<null | 'settings' | 'toc' | 'notes'>(null);
   const [page, setPage] = useState(0); const [pages, setPages] = useState(1);
   const [tick, setTick] = useState(0);
+  const [win, setWin] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  useEffect(() => { const f = () => setWin({ w: window.innerWidth, h: window.innerHeight }); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
   const [anns, setAnns] = useState<Annotation[]>([]);
   const [sel, setSel] = useState<null | Picked>(null);
   const [edit, setEdit] = useState<null | { ann: Annotation; isNew: boolean; readOnly?: boolean }>(null);
@@ -204,10 +207,20 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
       : b.type === 'scene' ? <div key={i} data-i={i} className="scene" role="separator">◇</div> : null)}
   </>);
 
-  return (
-    <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}`} style={vars}>
+  // 화면 크기 미리보기: 모바일·태블릿은 항상 그 크기의 틀로, PC는 화면이 1280×800보다 작을 때만 틀(화면에 안 들어가면 비율대로 축소)
+  const dev = s.device ?? 'auto';
+  const size = dev === 'auto' ? null : DEVICE_SIZE[dev];
+  const framed = !!size && (dev !== 'desktop' || win.w < size.w || win.h < size.h);
+  const k = framed ? Math.min(1, (win.w - 24) / size!.w, (win.h - 56) / size!.h) : 1;
+  const frameStyle: CSSProperties | undefined = framed ? { width: size!.w, height: size!.h, transform: `translate(-50%,-50%) scale(${k})` } : undefined;
+  const onDevice = (device: ViewerSettings['device']) => set({ device });
+
+  return (<>
+    {framed && <div className="vbackdrop" aria-hidden="true"><span>{dev === 'mobile' ? '모바일' : dev === 'tablet' ? '태블릿' : 'PC'} · {size!.w}×{size!.h}{k < 1 ? ` (${Math.round(k * 100)}%로 축소)` : ''}</span></div>}
+    <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}${framed ? ' framed' : ''}`} data-device={framed ? dev : 'auto'} style={{ ...vars, ...frameStyle }}>
       <div className={'bar top' + (bar || panel ? '' : ' hide')}>
-        <button className="back" onClick={close} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><span className="ttl">{book.title}</span>
+        <button className="back" onClick={close} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><span className="ttl">{book.title}</span><small className="bar-ver" aria-hidden="true">v{__APP_VERSION__}</small>
+        <DeviceSwitch compact className="bar-dev" value={dev} onChange={onDevice as any} />
         <button onClick={toggleBookmark} aria-label="현재 위치 북마크 추가/삭제">★</button>
         <button onClick={() => setPanel(panel === 'toc' ? null : 'toc')}>목차</button>
         <button onClick={() => setPanel(panel === 'notes' ? null : 'notes')}>메모{anns.length ? ` ${anns.length}` : ''}</button>
@@ -231,5 +244,5 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
         onChapter={i => { pending.current = 0; setPage(0); setCi(i); setPanel(null); }} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
-  );
+  </>);
 }

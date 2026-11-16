@@ -1,4 +1,7 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import Viewer from '../viewer/Viewer';
+import { useSettings } from '../store/useSettings';
+import { mockBook } from './data';
 import { Login, Notice } from '../Auth';
 import ErrorBoundary from '../ErrorBoundary';
 import { Loading } from '../ui/AuthShell';
@@ -13,6 +16,11 @@ import { createMockApi } from './mockApi';
 const editor = { name: '김편집', email: 'editor@example.com', role: 'editor' as const }, author = { name: '이서연', email: 'seoyeon@example.com', role: 'author' as const };
 const Boom = (): ReactNode => { throw new Error('목업: 화면 오류 예시'); };
 const noop = () => {};
+/** 읽기 화면 목업: ?mock=reader(스크롤) · ?mock=reader-page(페이지). 목록 버튼을 누르면 문서 제목이 '목록으로'로 바뀐다 */
+function ReaderMock({ page }: { page?: boolean }) {
+  const [s, set] = useSettings(); const api = useMemo(() => createMockApi(), []);
+  return <Viewer repo={api.repo} book={mockBook('b1')} state={null} settings={page ? { ...s, mode: 'page' } : s} onSettings={set} onProgress={noop} onClose={() => { document.title = '목록으로'; }} />;
+}
 export default function MockApp() {
   const which = new URLSearchParams(location.search).get('mock');
   const fakeApi: any = { signIn: async () => ({ error: null, session: null }) };
@@ -32,6 +40,8 @@ export default function MockApp() {
     case 'editor-local': return <EditorHome api={createMockApi()} userId="e1" account={editor} onLogout={noop} initialTab="local" />;
     case 'author': return <AuthorHome api={createMockApi()} userId="a1" account={author} onLogout={noop} />;
     case 'author-empty': return <AuthorHome api={createMockApi({ empty: true })} userId="a1" account={author} onLogout={noop} />;
+    case 'reader': return <ReaderMock />;
+    case 'reader-page': return <ReaderMock page />;
     default: return <Login api={fakeApi} onSignedIn={noop} />;
   }
 }

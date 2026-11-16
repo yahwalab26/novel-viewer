@@ -3,7 +3,7 @@ body{font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR","M
 button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #1a8cff;outline-offset:2px}
 /* 서재 */
 /* 뷰어 */
-.viewer{position:fixed;inset:0;background:var(--bg);color:var(--fg);overflow:hidden}
+.viewer{position:fixed;inset:0;background:var(--bg);color:var(--fg);overflow:hidden;container:viewer/inline-size}   /* 화면 크기 분기는 '창'이 아니라 이 뷰어 자신의 폭 기준(@container) → 모바일·태블릿 미리보기에서도 실제 기기와 똑같이 배치 */
 :root{--padx:20px}html.standalone{--padx-extra:1pt}   /* 앱으로 설치해 연 경우 좌우 여백 +1pt (상세 디자인은 추후 조정) */
 .wrap{position:absolute;inset:0;padding:max(56px,calc(env(safe-area-inset-top) + 20px)) calc(var(--padx) + var(--padx-extra,0px)) calc(env(safe-area-inset-bottom) + 36px);overflow-y:auto;-webkit-overflow-scrolling:touch}
 .paged .wrap{overflow:hidden}
@@ -22,7 +22,7 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
 .bar.top{top:0}.bar.hide{transform:translateY(-100%)}.bar button{background:none;border:0;min-width:44px;min-height:44px;font-size:1rem}.bar button{padding:0 8px;white-space:nowrap}.bar .back{display:flex;align-items:center;gap:2px;padding:0 10px 0 2px;font-weight:600;font-size:.95rem}.bar .ttl{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:center;font-size:.95rem}
 /* 바가 숨겨졌을 때도 목록으로 돌아갈 수 있는 작은 칩(PC에서는 바가 항상 보이므로 숨김) */
 .peek{position:absolute;z-index:6;top:calc(env(safe-area-inset-top) + 8px);left:8px;display:flex;align-items:center;gap:2px;min-height:44px;padding:0 14px 0 8px;border:0;border-radius:999px;background:rgba(20,20,20,.72);color:#fff;font-size:.9rem}
-@media (pointer:fine) and (min-width:900px){.bar.hide{transform:none}.peek{display:none}}
+@media (pointer:fine){@container viewer (min-width:900px){.bar.hide{transform:none}.peek{display:none}}}
 /* 패널: 모바일=하단 시트, PC=우측 패널 */
 .panel{position:absolute;z-index:10;left:0;right:0;bottom:0;max-height:78%;background:#171717;color:#eee;border-radius:18px 18px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom);font-family:system-ui,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;font-size:16px;line-height:1.4}
 .phead{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #2c2c2c}.pbody{overflow-y:auto;padding:0 20px 16px;margin:0;list-style:none}
@@ -34,10 +34,19 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
 .themes{display:flex;gap:12px;padding:16px 0;overflow-x:auto}.themes button{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid #444}.themes .sel{border:3px solid #1a8cff}
 .hint{color:#888;font-size:.8rem;margin:8px 0}.reset{margin-top:12px}
 .toc li button{width:100%;display:flex;justify-content:space-between;background:none;border:0;border-bottom:1px solid #262626;padding:14px 0;min-height:48px;text-align:left}.toc .cur{color:#1a8cff;font-weight:600}.toc small{color:#777}
-@media (min-width:900px){
+@container viewer (min-width:600px){.wrap,.foot,.vpct,.vver{--padx:32px}}
+@container viewer (min-width:900px){
   .panel{left:auto;right:0;top:48px;bottom:0;width:380px;max-height:none;border-radius:0}
-  :root{--padx:40px}
+  .wrap,.foot,.vpct,.vver{--padx:40px}
 }
+/* 화면 크기 미리보기 틀 + 전환 버튼 */
+.vbackdrop{position:fixed;inset:0;background:#cfcfcb;display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px;font-size:12px;color:#444}
+.viewer.framed{inset:auto;top:calc(50% - 10px);left:50%;transform-origin:center;border-radius:22px;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 14px 44px rgba(0,0,0,.28)}
+.devsw{display:inline-flex;gap:4px}.devsw button{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 10px;border:1px solid #555;border-radius:999px;background:none;color:inherit;font-size:.82rem;white-space:nowrap}
+.devsw button.on{background:#fff;color:#111;border-color:#fff}
+.bar .bar-dev{display:none;margin-right:6px}.bar .bar-dev button{min-width:0;min-height:34px;padding:0 10px}
+@container viewer (min-width:760px){.bar .bar-dev{display:inline-flex}}
+.devrow{display:flex;flex-direction:column;gap:8px;padding:4px 0 14px;border-bottom:1px solid #262626;margin-bottom:6px}.devrow .devsw{flex-wrap:wrap}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 /* 형광펜·메모 */
 mark.hl{color:#1a1a1a;border-radius:3px;padding:0 1px;cursor:pointer}
@@ -95,3 +104,4 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 
 .endnav button,.endnav .primary{font:inherit;font-weight:600}
 .vver{position:absolute;left:calc(var(--padx) + var(--padx-extra,0px));bottom:calc(env(safe-area-inset-bottom) + 9px);z-index:3;pointer-events:none;color:var(--fg);opacity:.4;font-size:11px;font-variant-numeric:tabular-nums;font-family:var(--font)}
+.bar .bar-ver{flex:none;font-size:10px;opacity:.5;margin:0 6px 0 -2px;white-space:nowrap}

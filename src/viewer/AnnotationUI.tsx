@@ -12,7 +12,7 @@ export const renderSegs = (text: string, anns?: Annotation[], meId?: string) =>
 
 export function SelectionBar({ onColor, onMemo, note }: { onColor: (c: Annotation['color']) => void; onMemo: () => void; note?: string }) {
   return <div className="selbar" role="toolbar" aria-label="형광펜" onClick={e => e.stopPropagation()} onMouseDown={e => e.preventDefault()}>
-    {COLORS.map(c => <button key={c} className={`dot hl-${c}`} aria-label={`${LABEL[c]} 형광펜`} onClick={() => onColor(c)} />)}
+    {COLORS.map(c => <button key={c} className={`hl-dot hl-${c}`} aria-label={`${LABEL[c]} 형광펜`} onClick={() => onColor(c)} />)}
     <button className="memo-btn" onClick={onMemo}>메모</button>{note && <small className="selnote">{note}</small>}</div>;
 }
 
@@ -27,7 +27,7 @@ export function MemoSheet({ ann, isNew, readOnly, authorName, onSave, onDelete, 
     <div className="phead"><b>{isNew ? '메모 추가' : '메모·형광펜'}</b><button className="link" onClick={onClose}>닫기</button></div>
     <div className="pbody">
       <blockquote className="quote">{ann.quote}</blockquote>
-      <div className="colors">{COLORS.map(c => <button key={c} className={`dot hl-${c}${c === color ? ' sel' : ''}`} aria-label={LABEL[c]} onClick={() => setColor(c)} />)}</div>
+      <div className="colors">{COLORS.map(c => <button key={c} className={`hl-dot hl-${c}${c === color ? ' sel' : ''}`} aria-label={LABEL[c]} onClick={() => setColor(c)} />)}</div>
       <textarea value={memo} onChange={e => setMemo(e.target.value)} placeholder="메모를 입력하세요 (선택)" rows={4} autoFocus={isNew} />
       <div className="actions">
         {!isNew && <button className="danger" onClick={() => { if (confirm('이 형광펜과 메모를 삭제할까요?')) onDelete(); }}>삭제</button>}

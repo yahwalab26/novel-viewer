@@ -89,6 +89,14 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   useEffect(() => { refreshProg(); }, [refreshProg, tick, s.fontSizeLevel, s.lineHeight, s.paragraphGap, s.paragraphWidthLevel, s.fontFamily, s.align]);
   useEffect(() => () => clearTimeout(progTimer.current), []);
   const timer = useRef<number>();
+  const saveRef = useRef(save); saveRef.current = save;
+  useEffect(() => {   // 새로고침·탭 닫기·앱 전환 직전에 마지막 위치를 바로 저장(500ms 디바운스에 걸려 유실되는 것 방지)
+    const flush = () => { clearTimeout(timer.current); saveRef.current(); };
+    const vis = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', vis);
+    return () => { window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', vis); };
+  }, []);
+  const close = () => { clearTimeout(timer.current); save(); onClose(); };   // 목록으로 나가기 전에 위치 저장
   const later = () => { clearTimeout(timer.current); timer.current = window.setTimeout(save, 500); };
   useEffect(later, [ci, page, scroll]); // eslint-disable-line
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -199,12 +207,12 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   return (
     <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}`} style={vars}>
       <div className={'bar top' + (bar || panel ? '' : ' hide')}>
-        <button className="back" onClick={onClose} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><span className="ttl">{book.title}</span>
+        <button className="back" onClick={close} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><span className="ttl">{book.title}</span>
         <button onClick={toggleBookmark} aria-label="현재 위치 북마크 추가/삭제">★</button>
         <button onClick={() => setPanel(panel === 'toc' ? null : 'toc')}>목차</button>
         <button onClick={() => setPanel(panel === 'notes' ? null : 'notes')}>메모{anns.length ? ` ${anns.length}` : ''}</button>
         <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')}>설정</button></div>
-      {!bar && !panel && <button className="peek" onClick={onClose} aria-label="작품 목록으로"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button>}
+      {!bar && !panel && <button className="peek" onClick={close} aria-label="작품 목록으로"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button>}
       <div ref={wrap} className="wrap" onClick={tap} onWheel={() => { touched.current = true; }} onTouchMove={() => { touched.current = true; }} onScroll={scroll ? onScrollBar : e => { e.currentTarget.scrollLeft = 0; e.currentTarget.scrollTop = 0; }}>
         {scroll ? <article className="flow">{content}
           <nav className="endnav">{ci > 0 && <button onClick={() => moveChapter(-1)}>이전 화</button>}{!lastChapter ? <button className="primary" onClick={() => moveChapter(1)}>다음 화</button> : <span>마지막 회차입니다</span>}</nav></article>
@@ -213,6 +221,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
       {!scroll && <div className="foot"><span>{info(s.bottomInfo.left)}</span><span>{info(s.bottomInfo.right)}</span></div>}
       <div className="vprog" role="progressbar" aria-label="읽은 비율" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(prog * 100)}><i style={{ width: `${prog * 100}%` }} /></div>
       {(scroll || s.bottomInfo.right === 'none') && <span className="vpct" aria-hidden="true">{Math.round(prog * 100)}%</span>}
+      {(scroll || s.bottomInfo.left === 'none') && <span className="vver" aria-hidden="true">v{__APP_VERSION__}</span>}
       <div className="dim" style={{ opacity: (1 - s.brightness) * 0.8 }} />
       {sel && !edit && !panel && <SelectionBar note={sel.clamped ? '첫 문단에만 적용돼요' : undefined} onColor={c => { const a = build(c); if (a) saveAnn(a); clearSel(); }} onMemo={() => { const a = build('yellow'); if (a) setEdit({ ann: a, isNew: true }); clearSel(); }} />}
       {edit && <MemoSheet key={edit.ann.id} ann={edit.ann} isNew={edit.isNew} readOnly={edit.readOnly} authorName={names?.[edit.ann.authorId]} onClose={() => setEdit(null)} onDelete={() => { delAnn(edit.ann.id); setEdit(null); }} onSave={a => { saveAnn(a); setEdit(null); }} />}

@@ -23,7 +23,7 @@ describe('PWA 매니페스트·아이콘', () => {
 
 // 서비스 워커를 가짜 브라우저 환경에서 실행해 캐시 전략을 검증
 function loadSw() {
-  const handlers: Record<string, (e: any) => void> = {}, store = new Map<string, Response>(), names = new Set(['nv-shell-v1', 'old-cache']);
+  const handlers: Record<string, (e: any) => void> = {}, store = new Map<string, Response>(), names = new Set(['nv-shell-v1', 'nv-shell-v2', 'old-cache']);
   const st = { fetch: (async (): Promise<Response> => { throw new Error('offline'); }) as (r: any) => Promise<Response>, claimed: false };
   const keyOf = (r: any) => (typeof r === 'string' ? r : r.url);
   const cache = { put: async (r: any, res: Response) => { store.set(keyOf(r), res); }, match: async (r: any) => store.get(keyOf(r))?.clone() };
@@ -64,6 +64,6 @@ describe('서비스 워커', () => {
   it('활성화 시 이전 캐시를 정리하고 즉시 제어권을 가져간다', async () => {
     const sw = loadSw(); sw.handlers.activate({ waitUntil: async (p: Promise<void>) => { await p; } });
     await new Promise(r => setTimeout(r, 10));
-    expect([...sw.names]).toEqual(['nv-shell-v1']); expect(sw.st.claimed).toBe(true);
+    expect([...sw.names]).toEqual(['nv-shell-v2']);   // v1(옛 배포 캐시)도 지워진다 expect(sw.st.claimed).toBe(true);
   });
 });

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { Annotation, AnnotationStore, Book, Bookmark, BookmarkStore, ReadingState } from '../core/model';
 import { readSelection, type Picked } from './selection';
 import { filterAnns, installProtection, isMine } from './protect';
-import { viewProgress } from '../core/progress';
+import { viewProgress, locateProgress } from '../core/progress';
 import { MemoSheet, SelectionBar, renderSegs } from './AnnotationUI';
 import { DEVICE_SIZE, type ViewerSettings } from '../core/settings';
 import SettingsPanel from './SettingsPanel';
@@ -26,6 +26,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   const [toast, setToast] = useState('');
   const [who, setWho] = useState('all');                  // 표시할 형광펜: all | mine | 작가 id
   const [now, setNow] = useState(() => new Date());
+  const noHide = useRef(0); const [seek, setSeek] = useState<number | null>(null);   // 슬라이더로 끄는 중인 값(0~1000)
   const lastTop = useRef(0); const touched = useRef(false);   // 사용자가 직접 스크롤했을 때만 바를 자동으로 숨긴다(이어읽기 위치 복원 스크롤은 제외)
   const wrap = useRef<HTMLDivElement>(null); const flow = useRef<HTMLDivElement>(null);
   const curRef = useRef<() => number>(() => 0);            // 최신 currentBlock (set·ResizeObserver에서 사용)
@@ -113,11 +114,11 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   useEffect(later, [ci, page, scroll]); // eslint-disable-line
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  // 스크롤 모드: 맨 위이거나 위로 올리면 상단 바 표시, 아래로 읽어 내려가면 숨김(패널이 열려 있으면 유지)
+  // 스크롤 모드: 아래로 읽어 내려가면 바를 숨긴다. 바는 화면을 터치·클릭(또는 Esc)했을 때만 나타난다 — 위로 스크롤해도, 맨 위에 닿아도 나타나지 않는다. 슬라이더로 이동한 직후(0.8초)에는 숨기지 않는다
   const onScrollBar = () => {
     later(); scheduleProg();
     const t = wrap.current!.scrollTop, d = t - lastTop.current; lastTop.current = t;
-    if (t < 48) setBar(true); else if (touched.current && Math.abs(d) > 12) setBar(d < 0);
+    if (touched.current && d > 12 && Date.now() - noHide.current > 800) setBar(false);
   };
   // ── 이동
   const next = useCallback(() => {
@@ -195,8 +196,12 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     setBms(l => [...l, bm]); say('북마크를 추가했어요');
     repo.saveBookmark(bm).catch(() => { setBms(l => l.filter(x => x.id !== bm.id)); say('북마크 저장에 실패했어요 (서버 설정을 확인해 주세요)'); });
   };
-  const goTo = (idx: number, bi: number) => {
-    setPanel(null);
+  const commitSeek = () => {   // 손을 떼면 그 위치(전체 중 %)로 이동
+    if (seek === null) return; const loc = locateProgress(book.chapters, seek / 1000); setSeek(null);
+    noHide.current = Date.now(); seekTo(loc.ci, loc.blockIndex);
+  };
+  const goTo = (idx: number, bi: number) => { setPanel(null); seekTo(idx, bi); };
+  const seekTo = (idx: number, bi: number) => {
     if (idx === ci) { const el = (flow.current ?? wrap.current)?.querySelector<HTMLElement>(`[data-i="${bi}"]`); if (!el) return; scroll ? el.scrollIntoView({ block: 'center' }) : setPage(Math.floor(el.offsetLeft / stride.current)); }
     else { pending.current = bi; setPage(0); setCi(idx); }
   };
@@ -236,7 +241,8 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
           <button onClick={() => gotoChapter(0)} disabled={ci === 0}>⇤ 처음으로</button><span className="bsp" />
           <button onClick={() => moveChapter(-1)} disabled={ci === 0}>‹ 이전 화</button>
           <button onClick={() => moveChapter(1)} disabled={lastChapter}>다음 화 ›</button></div>
-        <div className="bseek"><input type="range" min={0} max={Math.max(0, book.chapters.length - 1)} value={ci} disabled={book.chapters.length < 2} onChange={e => gotoChapter(+e.target.value)} aria-label="회차 이동" /><span>{ci + 1} / {book.chapters.length}화</span></div>
+        <div className="bseek"><input type="range" min={0} max={1000} step={1} value={seek ?? Math.round(prog * 1000)} aria-label="읽은 위치" aria-valuetext={`${Math.round((seek ?? prog * 1000) / 10)}%`}
+          onChange={e => setSeek(+e.target.value)} onPointerUp={commitSeek} onKeyUp={commitSeek} onBlur={commitSeek} /><span>{Math.round((seek ?? prog * 1000) / 10)}%</span></div>
         <div className="btabs">
           <button className={panel === 'toc' ? 'on' : ''} onClick={() => setPanel(panel === 'toc' ? null : 'toc')}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg><span>목차</span></button>
           <button className={panel === 'view' ? 'on' : ''} onClick={() => setPanel(panel === 'view' ? null : 'view')}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 6V4h14v2M12 4v16M9 20h6" /></svg><span>보기 설정</span></button>

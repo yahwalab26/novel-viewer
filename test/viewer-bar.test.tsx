@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import fs from 'node:fs';
 import Viewer from '../src/viewer/Viewer';
@@ -97,7 +97,7 @@ describe('읽기 화면 하단 바·설정 분리 (v0.16.0)', () => {
   it('하단 바에 처음으로·이전/다음 화·회차 슬라이더·탭 3개가 있다', async () => {
     await mount();
     const bot = host.querySelector('.bar.bottom')!; expect(bot).toBeTruthy();
-    expect(bot.querySelector('input[type=range][aria-label="회차 이동"]')).toBeTruthy();
+    expect(bot.querySelector('input[type=range][aria-label="읽은 위치"]')).toBeTruthy();
     for (const l of ['⇤ 처음으로', '‹ 이전 화', '다음 화 ›']) expect(btn(l), l).toBeTruthy();
     expect(btn('⇤ 처음으로')!.disabled).toBe(true);            // 첫 회차에서는 이전/처음으로 비활성
   });
@@ -137,5 +137,59 @@ describe('PC 폐지 · 글꼴 선택 화면', () => {
     await click(items[1]); expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ fontFamily: 'sans' }));
     await click(Array.from(host.querySelectorAll<HTMLElement>('.panel .link')).find(b => b.textContent?.includes('보기 설정'))!);
     expect(host.querySelector('[role=dialog][aria-label="보기 설정"]')).toBeTruthy();
+  });
+});
+
+describe('읽던 위치 유지 (스크롤·페이지 전환, 글자 설정 변경)', () => {
+  // 스크롤 모드에서 2번 문단이 화면 맨 위에 보이도록 위치를 흉내 낸다(jsdom에는 레이아웃이 없다)
+  const fakeLayout = () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const i = this.dataset?.i; const top = i === undefined ? 0 : (Number(i) - 2) * 100;
+      return { top, bottom: i === undefined ? 600 : top + 80, left: 0, right: 0, width: 0, height: 80, x: 0, y: top, toJSON() {} } as DOMRect;
+    });
+  };
+  const Host = ({ init }: { init: any }) => { const [st, setSt] = useState(init); const api = createMockApi();
+    return <Viewer repo={api.repo} book={mockBook('b1')} state={null} settings={st} onSettings={setSt} onProgress={() => {}} onClose={() => {}} />; };
+  it('스크롤 모드에서 글자 크기를 바꿔도 읽던 문단(2번)으로 다시 이동한다', async () => {
+    const seen: string[] = []; Element.prototype.scrollIntoView = function (this: Element) { seen.push((this as HTMLElement).dataset.i ?? ''); };
+    await act(async () => { root.render(<Host init={{ ...DEFAULT_SETTINGS, mode: 'scroll' }} />); });
+    fakeLayout(); seen.length = 0;
+    await click(btn('보기 설정')!);
+    await click(Array.from(host.querySelectorAll<HTMLButtonElement>('.panel .stepper button')).find(b => b.textContent === '+')!);   // 글자 크기 +
+    expect(seen).toContain('2');
+  });
+});
+
+describe('하단 슬라이더(위치 %) · 스크롤로는 바가 나타나지 않음 · 스크롤바 숨김', () => {
+  const Host2 = ({ init }: { init: any }) => { const [st, setSt] = useState(init); const api = createMockApi();
+    return <Viewer repo={api.repo} book={mockBook('b1')} state={null} settings={st} onSettings={setSt} onProgress={() => {}} onClose={() => {}} />; };
+  const slider = () => host.querySelector<HTMLInputElement>('.bar.bottom input[type=range]')!;
+  const setRange = async (el: HTMLInputElement, v: number) => { await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, String(v)); el.dispatchEvent(new Event('input', { bubbles: true })); }); };
+  it('슬라이더 옆에는 "1/1화" 대신 위치 %가 나오고, 끄는 동안 % 가 바뀐다', async () => {
+    await act(async () => { root.render(<Host2 init={{ ...DEFAULT_SETTINGS, mode: 'scroll' }} />); });
+    const lab = () => host.querySelector('.bseek span')!.textContent; expect(lab()).toMatch(/^\d+%$/); expect(lab()).not.toContain('화');
+    await setRange(slider(), 500); expect(lab()).toBe('50%');
+  });
+  it('슬라이더를 놓으면 그 위치(전체 중 %)의 회차로 이동한다', async () => {
+    await act(async () => { root.render(<Host2 init={{ ...DEFAULT_SETTINGS, mode: 'scroll' }} />); });
+    await setRange(slider(), 1000);
+    await act(async () => { slider().dispatchEvent(new Event('pointerup', { bubbles: true })); });
+    expect(host.querySelector('.wrap')!.textContent).toContain('3화');
+  });
+  it('위로 스크롤하거나 맨 위에 닿아도 바가 나타나지 않고, 화면을 눌러야만 나타난다', async () => {
+    await act(async () => { root.render(<Host2 init={{ ...DEFAULT_SETTINGS, mode: 'scroll' }} />); });
+    const wrap = host.querySelector<HTMLElement>('.wrap')!; const top = host.querySelector('.bar.top')!, bot = host.querySelector('.bar.bottom')!;
+    const scrollTo = async (y: number) => { await act(async () => { Object.defineProperty(wrap, 'scrollTop', { value: y, configurable: true, writable: true }); wrap.dispatchEvent(new Event('scroll', { bubbles: true })); }); };
+    await act(async () => { wrap.dispatchEvent(new Event('wheel', { bubbles: true })); });   // 직접 스크롤하는 중
+    await scrollTo(300);   expect(top.className).toContain('hide'); expect(bot.className).toContain('hide');   // 내려가면 숨김
+    await scrollTo(100);   expect(top.className).toContain('hide'); expect(bot.className).toContain('hide');   // 위로 올려도 그대로 숨김
+    await scrollTo(0);     expect(top.className).toContain('hide');                                           // 맨 위에 닿아도 그대로
+    await click(wrap);     expect(top.className).not.toContain('hide'); expect(bot.className).not.toContain('hide');   // 눌러야 나타남
+  });
+  it('CSS: 본문 스크롤바(흰 줄)는 숨긴다', () => {
+    const css = fs.readFileSync('src/styles.css', 'utf8').replace(/\s+/g, '');
+    expect(css).toContain('.wrap{scrollbar-width:none');
+    expect(css).toContain('.wrap::-webkit-scrollbar{display:none}');
   });
 });

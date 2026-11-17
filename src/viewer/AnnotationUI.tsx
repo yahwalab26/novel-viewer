@@ -35,16 +35,26 @@ export function MemoSheet({ ann, isNew, readOnly, authorName, onSave, onDelete, 
     </div></div>;
 }
 
-export function NotesPanel({ book, anns, who, onWho, meId, names, onGo, onClose }: { book: Book; anns: Annotation[]; who: string; onWho: (w: string) => void; meId?: string; names?: Record<string, string>; onGo: (ci: number, bi: number) => void; onClose: () => void }) {
+type NotesProps = { book: Book; anns: Annotation[]; who: string; onWho: (w: string) => void; meId?: string; names?: Record<string, string>; onGo: (ci: number, bi: number) => void };
+/** 메모·형광펜 목록(보기 필터 + 목록). 메모 패널과 목차 패널의 '메모' 탭이 함께 쓴다 */
+export function NotesList({ book, anns, who, onWho, meId, names, onGo }: NotesProps) {
   const order = (a: Annotation) => book.chapters.findIndex(c => c.id === a.chapterId) * 1e6 + a.blockIndex * 1e3 + a.start / 1e3;
   const list = [...filterAnns(anns, who, meId)].sort((x, y) => order(x) - order(y));
   const others = Array.from(new Set(anns.filter(a => !isMine(a, meId)).map(a => a.authorId)));
-  return <div className="panel toc" role="dialog" aria-label="메모 목록" onClick={e => e.stopPropagation()}>
-    <div className="phead"><b>메모·형광펜 ({list.length})</b><button className="link" onClick={onClose}>닫기</button></div>
+  return <>
     {others.length > 0 && <div className="whobar"><label>보기 <select value={who} onChange={e => onWho(e.target.value)}>
       <option value="all">전체</option><option value="mine">내 것</option>{others.map(id => <option key={id} value={id}>{names?.[id] || '작가'}</option>)}</select></label></div>}
     <ol className="pbody">{list.length === 0 && <li className="hint">글을 길게 눌러 선택하면 형광펜과 메모를 남길 수 있어요.</li>}
       {list.map(a => { const ci = book.chapters.findIndex(c => c.id === a.chapterId); return <li key={a.id}>
         <button onClick={() => onGo(ci, a.blockIndex)}><span>{!isMine(a, meId) && <b className="byauthor">{names?.[a.authorId] || '작가'}</b>}<mark className={`hl hl-${a.color}`}>{a.quote.length > 60 ? a.quote.slice(0, 60) + '…' : a.quote}</mark>
-          {a.memo && <span className="note">{a.memo}</span>}</span><small>{book.chapters[ci]?.title}</small></button></li>; })}</ol></div>;
+          {a.memo && <span className="note">{a.memo}</span>}</span><small>{book.chapters[ci]?.title}</small></button></li>; })}</ol>
+  </>;
+}
+
+export function NotesPanel({ onClose, ...p }: NotesProps & { onClose: () => void }) {
+  const n = filterAnns(p.anns, p.who, p.meId).length;
+  return <div className="panel toc" role="dialog" aria-label="메모 목록" onClick={e => e.stopPropagation()}>
+    <div className="phead"><b>메모·형광펜 ({n})</b><button className="link" onClick={onClose}>닫기</button></div>
+    <NotesList {...p} />
+  </div>;
 }

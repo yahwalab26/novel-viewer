@@ -1,12 +1,14 @@
 import { useDeferredValue, useMemo, useState } from 'react';
-import type { Book, Bookmark } from '../core/model';
+import type { Annotation, Book, Bookmark } from '../core/model';
+import { NotesList } from './AnnotationUI';
 import { searchBook } from '../core/search';
 
-type Tab = 'toc' | 'bookmarks' | 'search';
-interface Props { book: Book; ci: number; bookmarks: Bookmark[]; onChapter: (i: number) => void; onGo: (ci: number, bi: number) => void; onDeleteBookmark: (id: string) => void; onClose: () => void }
+type Tab = 'toc' | 'bookmarks' | 'notes' | 'search';
+interface Props { book: Book; ci: number; bookmarks: Bookmark[]; onChapter: (i: number) => void; onGo: (ci: number, bi: number) => void; onDeleteBookmark: (id: string) => void; onClose: () => void;
+  anns?: Annotation[]; who?: string; onWho?: (w: string) => void; meId?: string; names?: Record<string, string> }   // 메모 탭용(없으면 빈 목록)
 
-/** 목차 · 북마크 · 본문 검색을 한 패널에 */
-export default function NavPanel({ book, ci, bookmarks, onChapter, onGo, onDeleteBookmark, onClose }: Props) {
+/** 목차 · 북마크 · 메모 · 본문 검색을 한 패널에 */
+export default function NavPanel({ book, ci, bookmarks, onChapter, onGo, onDeleteBookmark, onClose, anns = [], who = 'all', onWho = () => {}, meId, names }: Props) {
   const [tab, setTab] = useState<Tab>('toc');
   const [q, setQ] = useState(''); const dq = useDeferredValue(q);
   const result = useMemo(() => searchBook(book, dq), [book, dq]);
@@ -16,9 +18,9 @@ export default function NavPanel({ book, ci, bookmarks, onChapter, onGo, onDelet
   }, [bookmarks, book]);
 
   return (
-    <div className="panel toc" role="dialog" aria-label="목차·북마크·검색" onClick={e => e.stopPropagation()}>
+    <div className="panel toc" role="dialog" aria-label="목차·북마크·메모·검색" onClick={e => e.stopPropagation()}>
       <div className="phead"><div className="ptabs" role="tablist">
-        {([['toc', '목차'], ['bookmarks', `북마크${bookmarks.length ? ' ' + bookmarks.length : ''}`], ['search', '검색']] as [Tab, string][]).map(([t, l]) =>
+        {([['toc', '목차'], ['bookmarks', `북마크${bookmarks.length ? ' ' + bookmarks.length : ''}`], ['notes', `메모${anns.length ? ' ' + anns.length : ''}`], ['search', '검색']] as [Tab, string][]).map(([t, l]) =>
           <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{l}</button>)}</div>
         <button className="link" onClick={onClose}>닫기</button></div>
 
@@ -26,10 +28,12 @@ export default function NavPanel({ book, ci, bookmarks, onChapter, onGo, onDelet
         <span>{c.title}</span><small>{c.charCount.toLocaleString()}자</small></button></li>)}</ol>}
 
       {tab === 'bookmarks' && <ol className="pbody">
-        {bms.length === 0 && <li className="hint">읽다가 위쪽 ★ 버튼을 누르면 지금 위치에 북마크가 생겨요.</li>}
+        {bms.length === 0 && <li className="hint">읽다가 위쪽 책갈피 버튼을 누르면 지금 위치에 북마크가 생겨요.</li>}
         {bms.map(({ b, ci: i }) => <li key={b.id} className="bmrow">
           <button className="bmgo" onClick={() => onGo(i, b.blockIndex)}><span><b>{book.chapters[i].title}</b>{b.label && <span className="bmlabel">{b.label}</span>}</span></button>
           <button className="bmdel" aria-label={`${book.chapters[i].title} 북마크 삭제`} onClick={() => onDeleteBookmark(b.id)}>삭제</button></li>)}</ol>}
+
+      {tab === 'notes' && <NotesList book={book} anns={anns} who={who} onWho={onWho} meId={meId} names={names} onGo={onGo} />}
 
       {tab === 'search' && <div className="pbody searchbody">
         <input type="search" autoFocus placeholder="본문에서 찾기" value={q} onChange={e => setQ(e.target.value)} aria-label="본문 검색" />

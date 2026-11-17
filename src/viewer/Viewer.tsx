@@ -3,9 +3,8 @@ import type { Annotation, AnnotationStore, Book, Bookmark, BookmarkStore, Readin
 import { readSelection, type Picked } from './selection';
 import { filterAnns, installProtection, isMine } from './protect';
 import { viewProgress } from '../core/progress';
-import { MemoSheet, NotesPanel, SelectionBar, renderSegs } from './AnnotationUI';
+import { MemoSheet, SelectionBar, renderSegs } from './AnnotationUI';
 import { DEVICE_SIZE, type ViewerSettings } from '../core/settings';
-import DeviceSwitch from './DeviceSwitch';
 import SettingsPanel from './SettingsPanel';
 import NavPanel from './NavPanel';
 import { THEME_COLORS, FONT_SIZES, FONTS, WIDTHS, LH_DEFAULT, GAP_DEFAULT } from './theme';
@@ -15,7 +14,7 @@ interface Props { repo: AnnotationStore & BookmarkStore; meId?: string; names?: 
 export default function Viewer({ repo, meId, names, protect, book, state, settings: s, onSettings, onProgress, onClose }: Props) {
   const [ci, setCi] = useState(() => Math.max(0, book.chapters.findIndex(c => c.id === state?.chapterId)));
   const [bar, setBar] = useState(true);
-  const [panel, setPanel] = useState<null | 'view' | 'viewer' | 'toc' | 'notes'>(null);
+  const [panel, setPanel] = useState<null | 'view' | 'viewer' | 'toc'>(null);
   const [page, setPage] = useState(0); const [pages, setPages] = useState(1);
   const [tick, setTick] = useState(0);
   const [win, setWin] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
@@ -221,9 +220,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}${framed ? ' framed' : ''}`} data-device={framed ? dev : 'auto'} style={{ ...vars, ...frameStyle }}>
       <div className={'bar top' + (bar || panel ? '' : ' hide')}>
         <button className="back" onClick={close} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><small className="bar-ver" aria-hidden="true">v{__APP_VERSION__}</small><span className="bsp" />
-        <DeviceSwitch compact className="bar-dev" value={dev} onChange={onDevice as any} />
-        <button onClick={() => setPanel(panel === 'notes' ? null : 'notes')}>메모{anns.length ? ` ${anns.length}` : ''}</button>
-        <button onClick={toggleBookmark} aria-label="현재 위치 북마크 추가/삭제">★</button>
+        <button className="bmbtn" onClick={toggleBookmark} aria-pressed={bms.some(b => b.chapterId === ch.id)} aria-label="현재 위치 북마크 추가/삭제"><svg width="22" height="22" viewBox="0 0 24 24" fill={bms.some(b => b.chapterId === ch.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" aria-hidden="true"><path d="M6.5 3.5h11v17l-5.5-4-5.5 4z" /></svg></button>
         <span className="ttl">{book.title}</span></div>
       {!bar && !panel && <button className="peek" onClick={close} aria-label="작품 목록으로"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button>}
       <div className={'bar bottom' + (bar || panel ? '' : ' hide')} onClick={e => e.stopPropagation()}>
@@ -248,9 +245,8 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
       <div className="dim" style={{ opacity: (1 - s.brightness) * 0.8 }} />
       {sel && !edit && !panel && <SelectionBar note={sel.clamped ? '첫 문단에만 적용돼요' : undefined} onColor={c => { const a = build(c); if (a) saveAnn(a); clearSel(); }} onMemo={() => { const a = build('yellow'); if (a) setEdit({ ann: a, isNew: true }); clearSel(); }} />}
       {edit && <MemoSheet key={edit.ann.id} ann={edit.ann} isNew={edit.isNew} readOnly={edit.readOnly} authorName={names?.[edit.ann.authorId]} onClose={() => setEdit(null)} onDelete={() => { delAnn(edit.ann.id); setEdit(null); }} onSave={a => { saveAnn(a); setEdit(null); }} />}
-      {panel === 'notes' && <NotesPanel book={book} anns={anns} who={who} onWho={setWho} meId={meId} names={names} onGo={goTo} onClose={() => setPanel(null)} />}
       {(panel === 'view' || panel === 'viewer') && <SettingsPanel kind={panel} s={s} set={set} close={() => setPanel(null)} />}
-      {panel === 'toc' && <NavPanel book={book} ci={ci} bookmarks={bms} onClose={() => setPanel(null)} onGo={goTo} onDeleteBookmark={delBookmark}
+      {panel === 'toc' && <NavPanel book={book} ci={ci} bookmarks={bms} anns={anns} who={who} onWho={setWho} meId={meId} names={names} onClose={() => setPanel(null)} onGo={goTo} onDeleteBookmark={delBookmark}
         onChapter={i => { pending.current = 0; setPage(0); setCi(i); setPanel(null); }} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>

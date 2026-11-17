@@ -43,7 +43,7 @@ export default function SettingsPanel({ kind, s, set, close }: P) {
         <Select label="문단 정렬" value={s.align} opts={[['original', '원본'], ['left', '왼쪽'], ['justify', '양쪽']]} onChange={v => set({ align: v })} />
         <Toggle label="형광펜 보기" on={s.highlight} onChange={v => set({ highlight: v })} />
         </> : <>
-        <div className="devrow"><div className="lbl">화면 크기</div><DeviceSwitch value={s.device ?? 'auto'} onChange={device => set({ device })} /></div>
+        <DeviceSwitch value={s.device ?? 'auto'} onChange={device => set({ device })} />
         <Toggle label="스크롤보기" on={scroll} onChange={v => set({ mode: v ? 'scroll' : 'page' })} />
         {scroll && <p className="hint">스크롤보기에서는 터치 설정, 넘김 효과, 하단 정보, 두쪽보기를 사용할 수 없습니다.</p>}
         <Select label="좌/우 터치 영역" disabled={scroll} value={s.tapZones.left} opts={[['prev', '이전 / 다음'], ['next', '다음 / 이전']]}

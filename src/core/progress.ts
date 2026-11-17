@@ -21,6 +21,22 @@ export function readingProgress(chapters: Chapter[], ci: number, blockIndex: num
   for (let k = 0; k < Math.min(blockIndex, blocks.length); k++) { const b = blocks[k]; if (b.type === 'p' || b.type === 'h') within += b.text.replace(/\s/g, '').length; }
   return Math.max(0, Math.min(1, (before + within) / total));
 }
+/** readingProgress 의 역: 전체의 frac(0~1) 지점이 속한 회차·문단 번호. 슬라이더로 '위치로 이동'할 때 쓴다 */
+export function locateProgress(chapters: Chapter[], frac: number): { ci: number; blockIndex: number } {
+  const n = chapters.length; if (n === 0) return { ci: 0, blockIndex: 0 };
+  const total = chapters.reduce((s, c) => s + c.charCount, 0);
+  if (total <= 0 || frac <= 0) return { ci: 0, blockIndex: 0 };
+  if (frac >= 1) return { ci: n - 1, blockIndex: Math.max(0, (chapters[n - 1].blocks.length || 1) - 1) };
+  let left = frac * total;
+  for (let ci = 0; ci < n; ci++) {
+    const c = chapters[ci];
+    if (left > c.charCount && ci < n - 1) { left -= c.charCount; continue; }
+    let acc = 0;
+    for (let k = 0; k < c.blocks.length; k++) { const b = c.blocks[k]; if (b.type === 'p' || b.type === 'h') acc += b.text.replace(/\s/g, '').length; if (acc >= left) return { ci, blockIndex: k }; }
+    return { ci, blockIndex: Math.max(0, c.blocks.length - 1) };
+  }
+  return { ci: n - 1, blockIndex: 0 };
+}
 /** 최근에 읽은 원고가 위로. 읽은 적 없는 것은 원래 순서 유지 */
 export function byRecentRead<T extends { id: string }>(list: T[], states: Map<string, StateLike>): T[] {
   return [...list].sort((a, b) => (states.get(b.id)?.updatedAt ?? 0) - (states.get(a.id)?.updatedAt ?? 0));

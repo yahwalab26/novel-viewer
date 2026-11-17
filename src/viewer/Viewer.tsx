@@ -15,7 +15,7 @@ interface Props { repo: AnnotationStore & BookmarkStore; meId?: string; names?: 
 export default function Viewer({ repo, meId, names, protect, book, state, settings: s, onSettings, onProgress, onClose }: Props) {
   const [ci, setCi] = useState(() => Math.max(0, book.chapters.findIndex(c => c.id === state?.chapterId)));
   const [bar, setBar] = useState(true);
-  const [panel, setPanel] = useState<null | 'settings' | 'toc' | 'notes'>(null);
+  const [panel, setPanel] = useState<null | 'view' | 'viewer' | 'toc' | 'notes'>(null);
   const [page, setPage] = useState(0); const [pages, setPages] = useState(1);
   const [tick, setTick] = useState(0);
   const [win, setWin] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
@@ -34,6 +34,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   const set = (p: Partial<ViewerSettings>) => onSettings({ ...s, ...p });
 
   const lastChapter = ci >= book.chapters.length - 1;
+  const gotoChapter = (i: number) => { pending.current = 0; setPage(0); setCi(i); };
   const moveChapter = useCallback((d: number, last = false) => {
     const n = ci + d; if (n < 0 || n >= book.chapters.length) return;
     pending.current = 0; goLast.current = last; setPage(0); setCi(n);
@@ -219,13 +220,22 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     {framed && <div className="vbackdrop" aria-hidden="true"><span>{dev === 'mobile' ? '모바일' : dev === 'tablet' ? '태블릿' : 'PC'} · {size!.w}×{size!.h}{k < 1 ? ` (${Math.round(k * 100)}%로 축소)` : ''}</span></div>}
     <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}${framed ? ' framed' : ''}`} data-device={framed ? dev : 'auto'} style={{ ...vars, ...frameStyle }}>
       <div className={'bar top' + (bar || panel ? '' : ' hide')}>
-        <button className="back" onClick={close} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><span className="ttl">{book.title}</span><small className="bar-ver" aria-hidden="true">v{__APP_VERSION__}</small>
+        <button className="back" onClick={close} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><small className="bar-ver" aria-hidden="true">v{__APP_VERSION__}</small><span className="bsp" />
         <DeviceSwitch compact className="bar-dev" value={dev} onChange={onDevice as any} />
-        <button onClick={toggleBookmark} aria-label="현재 위치 북마크 추가/삭제">★</button>
-        <button onClick={() => setPanel(panel === 'toc' ? null : 'toc')}>목차</button>
         <button onClick={() => setPanel(panel === 'notes' ? null : 'notes')}>메모{anns.length ? ` ${anns.length}` : ''}</button>
-        <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')}>설정</button></div>
+        <button onClick={toggleBookmark} aria-label="현재 위치 북마크 추가/삭제">★</button>
+        <span className="ttl">{book.title}</span></div>
       {!bar && !panel && <button className="peek" onClick={close} aria-label="작품 목록으로"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button>}
+      <div className={'bar bottom' + (bar || panel ? '' : ' hide')} onClick={e => e.stopPropagation()}>
+        <div className="bnav">
+          <button onClick={() => gotoChapter(0)} disabled={ci === 0}>⇤ 처음으로</button><span className="bsp" />
+          <button onClick={() => moveChapter(-1)} disabled={ci === 0}>‹ 이전 화</button>
+          <button onClick={() => moveChapter(1)} disabled={lastChapter}>다음 화 ›</button></div>
+        <div className="bseek"><input type="range" min={0} max={Math.max(0, book.chapters.length - 1)} value={ci} disabled={book.chapters.length < 2} onChange={e => gotoChapter(+e.target.value)} aria-label="회차 이동" /><span>{ci + 1} / {book.chapters.length}화</span></div>
+        <div className="btabs">
+          <button className={panel === 'toc' ? 'on' : ''} onClick={() => setPanel(panel === 'toc' ? null : 'toc')}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg><span>목차</span></button>
+          <button className={panel === 'view' ? 'on' : ''} onClick={() => setPanel(panel === 'view' ? null : 'view')}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 6V4h14v2M12 4v16M9 20h6" /></svg><span>보기 설정</span></button>
+          <button className={panel === 'viewer' ? 'on' : ''} onClick={() => setPanel(panel === 'viewer' ? null : 'viewer')}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" /></svg><span>뷰어 설정</span></button></div></div>
       <div ref={wrap} className="wrap" onClick={tap} onWheel={() => { touched.current = true; }} onTouchMove={() => { touched.current = true; }} onScroll={scroll ? onScrollBar : e => { e.currentTarget.scrollLeft = 0; e.currentTarget.scrollTop = 0; }}>
         {scroll ? <article className="flow">{content}
           <nav className="endnav">{ci > 0 && <button onClick={() => moveChapter(-1)}>이전 화</button>}{!lastChapter ? <button className="primary" onClick={() => moveChapter(1)}>다음 화</button> : <span>마지막 회차입니다</span>}</nav></article>
@@ -239,7 +249,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
       {sel && !edit && !panel && <SelectionBar note={sel.clamped ? '첫 문단에만 적용돼요' : undefined} onColor={c => { const a = build(c); if (a) saveAnn(a); clearSel(); }} onMemo={() => { const a = build('yellow'); if (a) setEdit({ ann: a, isNew: true }); clearSel(); }} />}
       {edit && <MemoSheet key={edit.ann.id} ann={edit.ann} isNew={edit.isNew} readOnly={edit.readOnly} authorName={names?.[edit.ann.authorId]} onClose={() => setEdit(null)} onDelete={() => { delAnn(edit.ann.id); setEdit(null); }} onSave={a => { saveAnn(a); setEdit(null); }} />}
       {panel === 'notes' && <NotesPanel book={book} anns={anns} who={who} onWho={setWho} meId={meId} names={names} onGo={goTo} onClose={() => setPanel(null)} />}
-      {panel === 'settings' && <SettingsPanel s={s} set={set} close={() => setPanel(null)} />}
+      {(panel === 'view' || panel === 'viewer') && <SettingsPanel kind={panel} s={s} set={set} close={() => setPanel(null)} />}
       {panel === 'toc' && <NavPanel book={book} ci={ci} bookmarks={bms} onClose={() => setPanel(null)} onGo={goTo} onDeleteBookmark={delBookmark}
         onChapter={i => { pending.current = 0; setPage(0); setCi(i); setPanel(null); }} />}
       {toast && <div className="toast" role="status">{toast}</div>}

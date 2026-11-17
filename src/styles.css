@@ -22,7 +22,7 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
 .bar.top{top:0;flex-wrap:wrap;align-content:flex-start;padding:env(safe-area-inset-top) 8px 6px;border-bottom:1px solid color-mix(in srgb,var(--fg) 14%,transparent)}.bar.hide{transform:translateY(-100%)}.bar button{background:none;border:0;min-width:44px;min-height:44px;font-size:1rem}.bar button{padding:0 8px;white-space:nowrap}.bar .back{display:flex;align-items:center;gap:2px;padding:0 10px 0 2px;font-weight:600;font-size:.95rem}.bar .ttl{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:center;font-size:.95rem}
 /* 바가 숨겨졌을 때도 목록으로 돌아갈 수 있는 작은 칩(PC에서는 바가 항상 보이므로 숨김) */
 .peek{position:absolute;z-index:6;top:calc(env(safe-area-inset-top) + 8px);left:8px;display:flex;align-items:center;gap:2px;min-height:44px;padding:0 14px 0 8px;border:0;border-radius:999px;background:color-mix(in srgb,var(--bg) 88%,var(--fg));color:var(--fg);box-shadow:0 0 0 1px color-mix(in srgb,var(--fg) 18%,transparent);font-size:.9rem}
-@media (pointer:fine){@container viewer (min-width:900px){.bar.hide{transform:none}.peek{display:none}}}
+/* 상단 바도 모든 화면 크기에서 하단 바와 함께 숨겨졌다 나타난다(PC 포함). 숨겨진 동안은 .peek 목록 칩이 남는다 */
 /* 상단 2줄(버튼줄 + 제목줄) · 하단 바(처음으로/이전·다음 화, 회차 슬라이더, 탭 3개) — 색은 독서 테마(--bg/--fg)에서 파생 */
 .bar .bsp{flex:1}.bar.top .ttl{order:9;flex:0 0 100%;padding:0 8px;font-size:.85rem;opacity:.75}
 .bar.bottom{bottom:0;flex-direction:column;align-items:stretch;gap:0;padding:6px 16px calc(env(safe-area-inset-bottom) + 4px);border-top:1px solid color-mix(in srgb,var(--fg) 14%,transparent)}
@@ -43,7 +43,7 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
 .toc li button{width:100%;display:flex;justify-content:space-between;background:none;border:0;border-bottom:1px solid #262626;padding:14px 0;min-height:48px;text-align:left}.toc .cur{color:#1a8cff;font-weight:600}.toc small{color:#777}
 @container viewer (min-width:600px){.wrap,.foot,.vpct,.vver{--padx:32px}}
 @container viewer (min-width:900px){
-  .panel{left:auto;right:0;top:48px;bottom:0;width:380px;max-height:none;border-radius:0}
+  .panel{left:auto;right:0;top:76px;bottom:0;width:380px;max-height:none;border-radius:0}
   .wrap,.foot,.vpct,.vver{--padx:40px}
 }
 /* 화면 크기 미리보기 틀 + 전환 버튼 */
@@ -111,3 +111,6 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .acc{border-bottom:1px solid #262626}.acc-h{width:100%;display:flex;align-items:center;gap:10px;min-height:56px;padding:0;background:none;border:0;color:inherit;font:inherit;text-align:left}.acc-h span{flex:1}.acc-h em{color:#8a8a8a;font-style:normal;font-size:.9rem}.acc-h .chev{color:#8a8a8a;transition:transform .15s}.acc.open .chev{transform:rotate(180deg)}
 .acc-list{display:flex;flex-direction:column;padding:0 0 8px}.acc-list button{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 4px 0 12px;background:none;border:0;border-radius:10px;color:#cfcfcf;font:inherit;text-align:left}.acc-list button span{flex:1}.acc-list button.on{color:#1a8cff;font-weight:600;background:#202020}
 .bar .bmbtn{min-width:44px;padding:0 10px}
+/* 글꼴 선택 화면(보기 설정 → 글꼴) */
+.navrow{width:100%;display:flex;align-items:center;gap:6px;min-height:56px;padding:0;background:none;border:0;border-bottom:1px solid #262626;color:inherit;font:inherit;text-align:left}.navrow span{flex:1}.navrow em{color:#8a8a8a;font-style:normal;font-size:.9rem}.navrow svg{color:#8a8a8a}
+.fontlist{list-style:none;margin:0;padding:0}.fontlist button{width:100%;display:flex;align-items:center;gap:12px;min-height:72px;padding:10px 4px;background:none;border:0;border-bottom:1px solid #262626;color:#d8d8d8;text-align:left}.fontlist .fl{flex:1;display:flex;flex-direction:column;gap:4px}.fontlist .fl small{color:#8a8a8a;font-size:.75rem;font-family:system-ui,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}.fontlist .fl span{font-size:1.15rem;line-height:1.4}.fontlist .on{color:#1a8cff}.fontlist .on .fl small{color:#1a8cff}

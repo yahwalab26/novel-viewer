@@ -3,9 +3,9 @@ export const THEMES = ['white','ivory','silver','gray','charcoal','forest','pape
 export type Theme = typeof THEMES[number];
 
 /** 화면 크기 미리보기: auto=실제 화면 그대로 */
-export type Device = 'auto' | 'mobile' | 'tablet' | 'desktop';
-export const DEVICES: [Device, string][] = [['auto', '자동'], ['mobile', '모바일'], ['tablet', '태블릿'], ['desktop', 'PC']];
-export const DEVICE_SIZE: Record<Exclude<Device, 'auto'>, { w: number; h: number }> = { mobile: { w: 390, h: 844 }, tablet: { w: 820, h: 1180 }, desktop: { w: 1280, h: 800 } };
+export type Device = 'auto' | 'mobile' | 'tablet';
+export const DEVICES: [Device, string][] = [['auto', '자동'], ['mobile', '모바일'], ['tablet', '태블릿']];
+export const DEVICE_SIZE: Record<Exclude<Device, 'auto'>, { w: number; h: number }> = { mobile: { w: 390, h: 844 }, tablet: { w: 820, h: 1180 } };
 
 export interface ViewerSettings {
   // 화면
@@ -35,6 +35,7 @@ export const SETTINGS_VERSION = 2;
 export function migrateSettings(stored: Record<string, unknown>): Record<string, unknown> {
   const s = { ...stored }; const v = typeof s.v === 'number' ? s.v : 1;
   if (v < 2 && s.align === 'original') s.align = 'justify';
+  if (s.device === 'desktop') s.device = 'auto';          // 예전 'PC' 선택은 자동과 같다(PC 미리보기 폐지)
   s.v = SETTINGS_VERSION; return s;
 }
 export const DEFAULT_SETTINGS: ViewerSettings = {

@@ -21,11 +21,12 @@ const btn = (label: string) => Array.from(host.querySelectorAll<HTMLButtonElemen
 const click = async (el: Element) => { await act(async () => { (el as HTMLElement).click(); }); };
 
 describe('읽기 화면 상단 바 — 목록·설정 접근', () => {
-  it('처음부터 글자 라벨이 있는 목록·목차·메모·설정 버튼이 보인다', async () => {
+  it('처음부터 목록·북마크(책갈피)·목차·보기 설정·뷰어 설정 버튼이 보인다', async () => {
     await mount();
     expect(host.querySelector('.bar.top')!.className).not.toContain('hide');
     for (const l of ['목록', '목차', '보기 설정', '뷰어 설정']) expect(btn(l), l).toBeTruthy();
-    expect(Array.from(host.querySelectorAll('.bar.top button')).some(b => b.textContent?.startsWith('메모'))).toBe(true);
+    const bm = host.querySelector('.bar.top button[aria-label*="북마크"]')!; expect(bm).toBeTruthy(); expect(bm.textContent).not.toContain('★'); expect(bm.querySelector('svg')).toBeTruthy();
+    expect(Array.from(host.querySelectorAll('.bar.top button')).some(b => b.textContent?.startsWith('메모'))).toBe(false);   // 메모는 목차 패널로 이동
   });
   it('목록 버튼을 누르면 서재로 돌아간다(onClose)', async () => {
     const close = vi.fn(); await mount(close); await click(btn('목록')!); expect(close).toHaveBeenCalledTimes(1);
@@ -64,17 +65,27 @@ describe('화면 크기 미리보기(모바일·태블릿·PC)', () => {
     const v = host.querySelector<HTMLElement>('.viewer.framed')!; expect(v.dataset.device).toBe('mobile'); expect(v.style.width).toBe('390px'); expect(v.style.height).toBe('844px');
     expect(host.querySelector('.vbackdrop')!.textContent).toContain('모바일'); expect(btn('목록')).toBeTruthy(); expect(btn('뷰어 설정')).toBeTruthy();
   });
-  it('상단 바의 버튼으로 전환하고, 켜진 버튼을 다시 누르면 자동으로 돌아간다', async () => {
-    const set = await mountWith('auto');
-    await click(host.querySelector('.bar .bar-dev')!.querySelectorAll('button')[1]);        // 태블릿
-    expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ device: 'tablet' }));
-    act(() => root.unmount()); root = createRoot(host); const set2 = await mountWith('tablet');
-    await click(host.querySelector('.bar .bar-dev button.on')!); expect(set2).toHaveBeenLastCalledWith(expect.objectContaining({ device: 'auto' }));
+  it('뷰어 설정의 화면 크기는 아코디언: 현재 값이 보이고, 펼쳐서 고르면 접힌다', async () => {
+    const set = await mountWith('auto'); await click(btn('뷰어 설정')!);
+    const head = host.querySelector<HTMLButtonElement>('.panel .acc-h')!; expect(head.textContent).toContain('화면 크기'); expect(head.textContent).toContain('자동');
+    expect(head.getAttribute('aria-expanded')).toBe('false'); expect(host.querySelector('.acc-list')).toBeNull();
+    await click(head); expect(head.getAttribute('aria-expanded')).toBe('true');
+    expect(Array.from(host.querySelectorAll('.acc-list button')).map(b => b.textContent?.replace('✓', ''))).toEqual(['자동', '모바일', '태블릿', 'PC']);
+    await click(host.querySelectorAll('.acc-list button')[2]);                                  // 태블릿
+    expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ device: 'tablet' })); expect(host.querySelector('.acc-list')).toBeNull();
   });
-  it('설정 패널 맨 위에 화면 크기(자동·모바일·태블릿·PC)가 있다', async () => {
-    await mountWith('auto'); await click(btn('뷰어 설정')!);
-    const labels = Array.from(host.querySelectorAll('.panel .devrow button')).map(b => b.textContent);
-    expect(labels).toEqual(['자동', '모바일', '태블릿', 'PC']);
+  it('모바일 틀 안에서도 뷰어 설정으로 다른 화면 크기로 바꿀 수 있다', async () => {
+    const set = await mountWith('mobile'); await click(btn('뷰어 설정')!);
+    expect(host.querySelector('.panel .acc-h')!.textContent).toContain('모바일');
+    await click(host.querySelector('.panel .acc-h')!); await click(host.querySelectorAll('.acc-list button')[3]);   // PC
+    expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ device: 'desktop' }));
+  });
+  it('목차 패널에 메모 탭이 있고(메모 개수 표시), 상단에는 메모 버튼이 없다', async () => {
+    await mountWith('auto'); await click(btn('목차')!);
+    const tabs = Array.from(host.querySelectorAll('.panel [role=tab]')).map(b => b.textContent);
+    expect(tabs.some(t => t?.startsWith('메모'))).toBe(true); expect(tabs.some(t => t?.startsWith('검색'))).toBe(true);
+    await click(Array.from(host.querySelectorAll<HTMLElement>('.panel [role=tab]')).find(b => b.textContent?.startsWith('메모'))!);
+    expect(host.querySelector('.panel')!.textContent).toContain('길게 눌러 선택');
   });
   it('CSS: 패널·여백 분기는 창이 아니라 뷰어 폭(@container) 기준', () => {
     const css = fs.readFileSync('src/styles.css', 'utf-8');

@@ -3,7 +3,7 @@ body{font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR","M
 button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #1a8cff;outline-offset:2px}
 /* 서재 */
 /* 뷰어 */
-.viewer{position:fixed;inset:0;background:var(--bg);color:var(--fg);overflow:hidden;container:viewer/inline-size}   /* 화면 크기 분기는 '창'이 아니라 이 뷰어 자신의 폭 기준(@container) → 모바일·태블릿 미리보기에서도 실제 기기와 똑같이 배치 */
+.viewer{position:fixed;inset:0;z-index:30;background:var(--bg);color:var(--fg);overflow:hidden;container:viewer/inline-size}   /* 화면 크기 분기는 '창'이 아니라 이 뷰어 자신의 폭 기준(@container) → 모바일·태블릿 미리보기에서도 실제 기기와 똑같이 배치 */
 :root{--padx:20px}html.standalone{--padx-extra:1pt}   /* 앱으로 설치해 연 경우 좌우 여백 +1pt (상세 디자인은 추후 조정) */
 .wrap{position:absolute;inset:0;padding:max(84px,calc(env(safe-area-inset-top) + 62px)) calc(var(--padx) + var(--padx-extra,0px)) calc(env(safe-area-inset-bottom) + 36px);overflow-y:auto;-webkit-overflow-scrolling:touch}
 .paged .wrap{overflow:hidden}
@@ -47,7 +47,7 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
   .wrap,.foot,.vpct,.vver{--padx:40px}
 }
 /* 화면 크기 미리보기 틀 + 전환 버튼 */
-.vbackdrop{position:fixed;inset:0;background:#cfcfcb;display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px;font-size:12px;color:#444}
+.vbackdrop{position:fixed;inset:0;z-index:29;background:#cfcfcb;display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px;font-size:12px;color:#444}
 .viewer.framed{inset:auto;top:calc(50% - 10px);left:50%;transform-origin:center;border-radius:22px;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 14px 44px rgba(0,0,0,.28)}
 .devsw{display:inline-flex;gap:4px}.devsw button{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 10px;border:1px solid #555;border-radius:999px;background:none;color:inherit;font-size:.82rem;white-space:nowrap}
 .devsw button.on{background:#fff;color:#111;border-color:#fff}

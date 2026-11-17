@@ -49,12 +49,6 @@ button{font:inherit;cursor:pointer;color:inherit}button:focus-visible,select:foc
 /* 화면 크기 미리보기 틀 + 전환 버튼 */
 .vbackdrop{position:fixed;inset:0;z-index:29;background:#cfcfcb;display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px;font-size:12px;color:#444}
 .viewer.framed{inset:auto;top:calc(50% - 10px);left:50%;transform-origin:center;border-radius:22px;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 14px 44px rgba(0,0,0,.28)}
-.devsw{display:inline-flex;gap:4px}.devsw button{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 10px;border:1px solid #555;border-radius:999px;background:none;color:inherit;font-size:.82rem;white-space:nowrap}
-.devsw button.on{background:#fff;color:#111;border-color:#fff}
-.bar .devsw button{border-color:color-mix(in srgb,var(--fg) 35%,transparent)}.bar .devsw button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
-.bar .bar-dev{display:none;margin-right:6px}.bar .bar-dev button{min-width:0;min-height:34px;padding:0 10px}
-@container viewer (min-width:760px){.bar .bar-dev{display:inline-flex}}
-.devrow{display:flex;flex-direction:column;gap:8px;padding:4px 0 14px;border-bottom:1px solid #262626;margin-bottom:6px}.devrow .devsw{flex-wrap:wrap}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 /* 형광펜·메모 */
 mark.hl{color:#1a1a1a;border-radius:3px;padding:0 1px;cursor:pointer}
@@ -113,3 +107,7 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .endnav button,.endnav .primary{font:inherit;font-weight:600}
 .vver{position:absolute;left:calc(var(--padx) + var(--padx-extra,0px));bottom:calc(env(safe-area-inset-bottom) + 9px);z-index:3;pointer-events:none;color:var(--fg);opacity:.4;font-size:11px;font-variant-numeric:tabular-nums;font-family:var(--font)}
 .bar .bar-ver{flex:none;font-size:10px;opacity:.5;margin:0 6px 0 -2px;white-space:nowrap}
+/* 화면 크기 아코디언(뷰어 설정) */
+.acc{border-bottom:1px solid #262626}.acc-h{width:100%;display:flex;align-items:center;gap:10px;min-height:56px;padding:0;background:none;border:0;color:inherit;font:inherit;text-align:left}.acc-h span{flex:1}.acc-h em{color:#8a8a8a;font-style:normal;font-size:.9rem}.acc-h .chev{color:#8a8a8a;transition:transform .15s}.acc.open .chev{transform:rotate(180deg)}
+.acc-list{display:flex;flex-direction:column;padding:0 0 8px}.acc-list button{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 4px 0 12px;background:none;border:0;border-radius:10px;color:#cfcfcf;font:inherit;text-align:left}.acc-list button span{flex:1}.acc-list button.on{color:#1a8cff;font-weight:600;background:#202020}
+.bar .bmbtn{min-width:44px;padding:0 10px}

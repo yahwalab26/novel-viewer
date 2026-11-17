@@ -44,9 +44,9 @@ describe('읽기 화면 상단 바 — 목록·설정 접근', () => {
     expect(host.querySelector('.bar.top')!.className).not.toContain('hide');
     expect(host.querySelector('.peek')).toBeNull();
   });
-  it('CSS: PC(마우스+넓은 화면)에서는 바가 항상 보이고 칩은 숨긴다', () => {
+  it('CSS: PC(자동)에서도 상단 바가 하단 바처럼 숨겨졌다 나타난다(바를 항상 보이게 하는 규칙 없음)', () => {
     const css = fs.readFileSync('src/styles.css', 'utf-8');
-    expect(css).toMatch(/@media \(pointer:fine\)\{@container viewer \(min-width:900px\)\{\.bar\.hide\{transform:none\}\.peek\{display:none\}\}\}/);
+    expect(css).not.toContain('.bar.hide{transform:none}'); expect(css).not.toContain('pointer:fine');
   });
 });
 
@@ -70,15 +70,15 @@ describe('화면 크기 미리보기(모바일·태블릿·PC)', () => {
     const head = host.querySelector<HTMLButtonElement>('.panel .acc-h')!; expect(head.textContent).toContain('화면 크기'); expect(head.textContent).toContain('자동');
     expect(head.getAttribute('aria-expanded')).toBe('false'); expect(host.querySelector('.acc-list')).toBeNull();
     await click(head); expect(head.getAttribute('aria-expanded')).toBe('true');
-    expect(Array.from(host.querySelectorAll('.acc-list button')).map(b => b.textContent?.replace('✓', ''))).toEqual(['자동', '모바일', '태블릿', 'PC']);
+    expect(Array.from(host.querySelectorAll('.acc-list button')).map(b => b.textContent?.replace('✓', ''))).toEqual(['자동', '모바일', '태블릿']);
     await click(host.querySelectorAll('.acc-list button')[2]);                                  // 태블릿
     expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ device: 'tablet' })); expect(host.querySelector('.acc-list')).toBeNull();
   });
   it('모바일 틀 안에서도 뷰어 설정으로 다른 화면 크기로 바꿀 수 있다', async () => {
     const set = await mountWith('mobile'); await click(btn('뷰어 설정')!);
     expect(host.querySelector('.panel .acc-h')!.textContent).toContain('모바일');
-    await click(host.querySelector('.panel .acc-h')!); await click(host.querySelectorAll('.acc-list button')[3]);   // PC
-    expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ device: 'desktop' }));
+    await click(host.querySelector('.panel .acc-h')!); await click(host.querySelectorAll('.acc-list button')[0]);   // 자동
+    expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ device: 'auto' }));
   });
   it('목차 패널에 메모 탭이 있고(메모 개수 표시), 상단에는 메모 버튼이 없다', async () => {
     await mountWith('auto'); await click(btn('목차')!);
@@ -118,5 +118,24 @@ describe('앱 상단 헤더와 겹침 방지', () => {
     const z = (file: string, sel: string) => { const m = fs.readFileSync(file, 'utf8').match(new RegExp(sel.replace('.', '\\.') + '\\s*\\{[^}]*?z-index:\\s*(\\d+)')); return m ? +m[1] : 0; };
     expect(z('src/styles.css', '.viewer')).toBeGreaterThan(z('src/styles/library.css', '.topbar'));
     expect(z('src/styles.css', '.vbackdrop')).toBeGreaterThan(z('src/styles/library.css', '.topbar'));
+  });
+});
+
+describe('PC 폐지 · 글꼴 선택 화면', () => {
+  it('예전에 저장된 device:desktop 값도 깨지지 않고 자동(틀 없음)으로 동작한다', async () => {
+    const api = createMockApi();
+    await act(async () => { root.render(<Viewer repo={api.repo} book={mockBook('b1')} state={null} settings={{ ...DEFAULT_SETTINGS, device: 'desktop' as any }} onSettings={() => {}} onProgress={() => {}} onClose={() => {}} />); });
+    expect(host.querySelector('.viewer.framed')).toBeNull(); expect(host.querySelector('.bar.top')).toBeTruthy();
+  });
+  it('보기 설정의 글꼴 행을 누르면 글꼴 목록(각 글꼴로 미리보기)이 열리고, 고르면 적용된다', async () => {
+    const set = vi.fn(); const api = createMockApi();
+    await act(async () => { root.render(<Viewer repo={api.repo} book={mockBook('b1')} state={null} settings={DEFAULT_SETTINGS} onSettings={set} onProgress={() => {}} onClose={() => {}} />); });
+    await click(btn('보기 설정')!); await click(host.querySelector('.panel .navrow')!);
+    expect(host.querySelector('[role=dialog][aria-label="글꼴"]')).toBeTruthy();
+    const items = host.querySelectorAll<HTMLButtonElement>('.fontlist button'); expect(items.length).toBeGreaterThanOrEqual(3);
+    expect((items[1].querySelector('.fl span') as HTMLElement).style.fontFamily).toBeTruthy();
+    await click(items[1]); expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ fontFamily: 'sans' }));
+    await click(Array.from(host.querySelectorAll<HTMLElement>('.panel .link')).find(b => b.textContent?.includes('보기 설정'))!);
+    expect(host.querySelector('[role=dialog][aria-label="보기 설정"]')).toBeTruthy();
   });
 });

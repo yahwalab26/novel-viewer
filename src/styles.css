@@ -147,3 +147,7 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 @keyframes v-rise{from{transform:translateY(16px);opacity:0}}@keyframes v-slide{from{transform:translateX(16px);opacity:0}}
 @media (prefers-reduced-motion:no-preference){.panel{animation:v-rise .18s ease-out}}
 @container viewer (min-width:900px){.panel{left:auto;right:0;top:76px;bottom:0;width:380px;max-height:none;border-radius:0;box-shadow:-1px 0 0 var(--v-hair),-18px 0 44px rgba(0,0,0,.08)}.panel::before{display:none}@media (prefers-reduced-motion:no-preference){.panel{animation-name:v-slide}}}
+/* 본문 스크롤바(흰 줄) 숨김 — 스크롤은 그대로 동작. 패널 안 목록은 얇고 테마색으로 */
+.wrap{scrollbar-width:none;-ms-overflow-style:none}.wrap::-webkit-scrollbar{display:none}
+.panel .pbody{scrollbar-width:thin;scrollbar-color:var(--v-line2) transparent}
+.bseek span{min-width:3.2em;text-align:right}

@@ -101,3 +101,11 @@ describe('읽기 화면 하단 바·설정 분리 (v0.16.0)', () => {
     expect(host.querySelector('.bar.top')!.className).toContain('hide'); expect(host.querySelector('.bar.bottom')!.className).toContain('hide');
   });
 });
+
+describe('앱 상단 헤더와 겹침 방지', () => {
+  it('읽기 화면(.viewer)은 앱 헤더(.topbar)보다 위에 그려진다(z-index)', () => {
+    const z = (file: string, sel: string) => { const m = fs.readFileSync(file, 'utf8').match(new RegExp(sel.replace('.', '\\.') + '\\s*\\{[^}]*?z-index:\\s*(\\d+)')); return m ? +m[1] : 0; };
+    expect(z('src/styles.css', '.viewer')).toBeGreaterThan(z('src/styles/library.css', '.topbar'));
+    expect(z('src/styles.css', '.vbackdrop')).toBeGreaterThan(z('src/styles/library.css', '.topbar'));
+  });
+});

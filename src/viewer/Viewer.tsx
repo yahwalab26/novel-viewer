@@ -28,9 +28,16 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   const [now, setNow] = useState(() => new Date());
   const lastTop = useRef(0); const touched = useRef(false);   // 사용자가 직접 스크롤했을 때만 바를 자동으로 숨긴다(이어읽기 위치 복원 스크롤은 제외)
   const wrap = useRef<HTMLDivElement>(null); const flow = useRef<HTMLDivElement>(null);
+  const curRef = useRef<() => number>(() => 0);            // 최신 currentBlock (set·ResizeObserver에서 사용)
   const stride = useRef(1); const pending = useRef(state?.blockIndex ?? 0); const goLast = useRef(false);
   const ch = book.chapters[ci]; const scroll = s.mode === 'scroll';
-  const set = (p: Partial<ViewerSettings>) => onSettings({ ...s, ...p });
+  const dev: 'auto' | 'mobile' | 'tablet' = s.device === 'mobile' || s.device === 'tablet' ? s.device : 'auto';   // 알 수 없는 저장값은 자동
+  // 모드(스크롤↔페이지)·글자·간격·너비·화면 크기처럼 줄바꿈 위치가 달라지는 설정을 바꾸기 전에, 지금 읽는 문단을 기억해 두었다가 다시 그 문단으로 돌아간다
+  const LAYOUT_KEYS = ['mode', 'fontSizeLevel', 'fontFamily', 'lineHeight', 'paragraphGap', 'paragraphWidthLevel', 'align', 'twoPageLandscape', 'device'];
+  const set = (p: Partial<ViewerSettings>) => {
+    if (LAYOUT_KEYS.some(k => k in p)) { const b = curRef.current(); if (b > 0) pending.current = b; }
+    onSettings({ ...s, ...p });
+  };
 
   const lastChapter = ci >= book.chapters.length - 1;
   const gotoChapter = (i: number) => { pending.current = 0; setPage(0); setCi(i); };
@@ -53,20 +60,22 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     else if (pending.current > 0) { const el = f.querySelector<HTMLElement>(`[data-i="${pending.current}"]`); setPage(el ? Math.min(Math.floor(el.offsetLeft / stride.current), total - 1) : 0); }
     else setPage(p => Math.min(p, total - 1));
     goLast.current = false; pending.current = 0;
-  }, [tick, scroll, ci, s.fontSizeLevel, s.fontFamily, s.lineHeight, s.paragraphGap, s.paragraphWidthLevel, s.align, s.twoPageLandscape, s.mode]);
+  }, [tick, scroll, ci, s.fontSizeLevel, s.fontFamily, s.lineHeight, s.paragraphGap, s.paragraphWidthLevel, s.align, s.twoPageLandscape, s.mode, dev]);
   useEffect(() => {
     if (scroll || !wrap.current) return;
-    const ro = new ResizeObserver(() => setTick(t => t + 1)); ro.observe(wrap.current);
+    const ro = new ResizeObserver(() => { if (pending.current === 0) { const b = curRef.current(); if (b > 0) pending.current = b; } setTick(t => t + 1); });   // 창·틀 크기가 바뀌어도 읽던 문단 유지 ro.observe(wrap.current);
     return () => ro.disconnect();
   }, [scroll]);
 
-  // ── 스크롤 모드: 회차 이동 시 위치 복원
+  // ── 스크롤 모드: 회차 이동·모드 전환·글자 설정 변경 시 위치 복원 (회차나 모드가 바뀐 경우에만 맨 위/맨 아래로 보낸다)
+  const lastNav = useRef({ ci, scroll });
   useEffect(() => {
     if (!scroll || !wrap.current) return;
+    const moved = lastNav.current.ci !== ci || lastNav.current.scroll !== scroll; lastNav.current = { ci, scroll };
     const el = pending.current > 0 ? wrap.current.querySelector<HTMLElement>(`[data-i="${pending.current}"]`) : null;
-    if (el) el.scrollIntoView(); else wrap.current.scrollTop = goLast.current ? wrap.current.scrollHeight : 0;
+    if (el) el.scrollIntoView(); else if (moved) wrap.current.scrollTop = goLast.current ? wrap.current.scrollHeight : 0;
     pending.current = 0; goLast.current = false;
-  }, [scroll, ci]);
+  }, [scroll, ci, s.fontSizeLevel, s.fontFamily, s.lineHeight, s.paragraphGap, s.paragraphWidthLevel, s.align, dev]);
 
   // ── 진행 저장
   const currentBlock = useCallback((): number => {            // 지금 화면 맨 위(또는 쪽 시작)에 보이는 문단 번호
@@ -92,7 +101,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   useEffect(() => { refreshProg(); }, [refreshProg, tick, s.fontSizeLevel, s.lineHeight, s.paragraphGap, s.paragraphWidthLevel, s.fontFamily, s.align]);
   useEffect(() => () => clearTimeout(progTimer.current), []);
   const timer = useRef<number>();
-  const saveRef = useRef(save); saveRef.current = save;
+  const saveRef = useRef(save); saveRef.current = save; curRef.current = currentBlock;
   useEffect(() => {   // 새로고침·탭 닫기·앱 전환 직전에 마지막 위치를 바로 저장(500ms 디바운스에 걸려 유실되는 것 방지)
     const flush = () => { clearTimeout(timer.current); saveRef.current(); };
     const vis = () => { if (document.visibilityState === 'hidden') flush(); };
@@ -208,7 +217,6 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   </>);
 
   // 화면 크기 미리보기: 모바일·태블릿은 항상 그 크기의 틀로, PC는 화면이 1280×800보다 작을 때만 틀(화면에 안 들어가면 비율대로 축소)
-  const dev: 'auto' | 'mobile' | 'tablet' = s.device === 'mobile' || s.device === 'tablet' ? s.device : 'auto';   // 알 수 없는 저장값은 자동
   const size = dev === 'auto' ? null : DEVICE_SIZE[dev];
   const framed = !!size;
   const k = framed ? Math.min(1, (win.w - 24) / size!.w, (win.h - 56) / size!.h) : 1;

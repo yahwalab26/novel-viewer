@@ -46,8 +46,8 @@ export function NotesList({ book, anns, who, onWho, meId, names, onGo }: NotesPr
       <option value="all">전체</option><option value="mine">내 것</option>{others.map(id => <option key={id} value={id}>{names?.[id] || '작가'}</option>)}</select></label></div>}
     <ol className="pbody">{list.length === 0 && <li className="hint">글을 길게 눌러 선택하면 형광펜과 메모를 남길 수 있어요.</li>}
       {list.map(a => { const ci = book.chapters.findIndex(c => c.id === a.chapterId); return <li key={a.id}>
-        <button onClick={() => onGo(ci, a.blockIndex)}><span>{!isMine(a, meId) && <b className="byauthor">{names?.[a.authorId] || '작가'}</b>}<mark className={`hl hl-${a.color}`}>{a.quote.length > 60 ? a.quote.slice(0, 60) + '…' : a.quote}</mark>
-          {a.memo && <span className="note">{a.memo}</span>}</span><small>{book.chapters[ci]?.title}</small></button></li>; })}</ol>
+        <button className="nrow" onClick={() => onGo(ci, a.blockIndex)}><span className="nmain">{!isMine(a, meId) && <b className="byauthor">{names?.[a.authorId] || '작가'}</b>}<mark className={`hl hl-${a.color}`}>{a.quote.length > 60 ? a.quote.slice(0, 60) + '…' : a.quote}</mark>
+          {a.memo && <span className="note">{a.memo}</span>}</span><small className="nch" title={book.chapters[ci]?.title}>{book.chapters[ci]?.title}</small></button></li>; })}</ol>
   </>;
 }
 

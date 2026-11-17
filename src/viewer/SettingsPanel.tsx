@@ -39,10 +39,12 @@ export default function SettingsPanel({ kind, s, set, close }: P) {
       <div className="phead"><b>{kind === 'view' ? '보기 설정' : '뷰어 설정'}</b><button className="link" onClick={close}>닫기</button></div>
       <div className="pbody">
         {kind === 'view' ? <>
+        <h4>배경</h4>
         <div className="themes" role="radiogroup" aria-label="배경색">{THEMES.map(t =>
           <button key={t} role="radio" aria-checked={s.theme === t} aria-label={THEME_COLORS[t].label}
             className={s.theme === t ? 'sel' : ''} style={{ background: THEME_COLORS[t].bg }} onClick={() => set({ theme: t })} />)}</div>
         <Row label="밝기"><input type="range" min={0.3} max={1} step={0.05} value={s.brightness} onChange={e => set({ brightness: +e.target.value })} aria-label="밝기" /></Row>
+        <h4>글자와 문단</h4>
         <button type="button" className="navrow" onClick={() => setSub('font')}><span>글꼴</span><em>{FONTS[s.fontFamily]?.label ?? FONTS.original.label}</em><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
         <Row label="글자 크기" value={String(s.fontSizeLevel)}><Stepper label="글자 크기" dec={() => set({ fontSizeLevel: clamp(s.fontSizeLevel - 1, 1, 10) })} inc={() => set({ fontSizeLevel: clamp(s.fontSizeLevel + 1, 1, 10) })} /></Row>
         <Row label="줄 간격" value={s.lineHeight === 'original' ? '원본' : String(lh)}><Stepper label="줄 간격" reset={() => set({ lineHeight: 'original' })} dec={() => set({ lineHeight: clamp(r1(lh - 0.1), 1.2, 2.6) })} inc={() => set({ lineHeight: clamp(r1(lh + 0.1), 1.2, 2.6) })} /></Row>
@@ -51,16 +53,20 @@ export default function SettingsPanel({ kind, s, set, close }: P) {
         <Select label="문단 정렬" value={s.align} opts={[['original', '원본'], ['left', '왼쪽'], ['justify', '양쪽']]} onChange={v => set({ align: v })} />
         <Toggle label="형광펜 보기" on={s.highlight} onChange={v => set({ highlight: v })} />
         </> : <>
+        <h4>화면</h4>
         <DeviceSwitch value={s.device ?? 'auto'} onChange={device => set({ device })} />
         <Toggle label="스크롤보기" on={scroll} onChange={v => set({ mode: v ? 'scroll' : 'page' })} />
         {scroll && <p className="hint">스크롤보기에서는 터치 설정, 넘김 효과, 하단 정보, 두쪽보기를 사용할 수 없습니다.</p>}
+        <h4>터치</h4>
         <Select label="좌/우 터치 영역" disabled={scroll} value={s.tapZones.left} opts={[['prev', '이전 / 다음'], ['next', '다음 / 이전']]}
           onChange={v => set({ tapZones: { left: v, right: v === 'prev' ? 'next' : 'prev' } })} />
         <Toggle label="상/하 터치로 페이지 이동" disabled={scroll} on={s.verticalTapPaging} onChange={v => set({ verticalTapPaging: v })} />
+        <h4>페이지</h4>
         <Select label="페이지 넘김 효과" disabled={scroll} value={s.pageTurnEffect} opts={[['none', '없음'], ['fade', '서서히 나타남'], ['slide', '밀기']]} onChange={v => set({ pageTurnEffect: v })} />
         <Toggle label="가로모드에서 두쪽보기" disabled={scroll} on={s.twoPageLandscape} onChange={v => set({ twoPageLandscape: v })} />
         <Select label="하단 왼쪽 정보" disabled={scroll} value={s.bottomInfo.left} opts={[['none', '표시 안 함'], ['time', '현재 시각'], ['chapter', '회차 제목']]} onChange={v => set({ bottomInfo: { ...s.bottomInfo, left: v } })} />
         <Select label="하단 오른쪽 정보" disabled={scroll} value={s.bottomInfo.right} opts={[['none', '표시 안 함'], ['page', '페이지'], ['percent', '진행률']]} onChange={v => set({ bottomInfo: { ...s.bottomInfo, right: v } })} />
+        <h4>기타</h4>
         <Toggle label="화면 항상 켜짐" on={s.keepScreenOn} onChange={v => set({ keepScreenOn: v })} />
         <button className="link reset" onClick={() => set({ ...DEFAULT_SETTINGS })}>설정 초기화</button>
         </>}

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { THEMES, DEFAULT_SETTINGS, type ViewerSettings } from '../core/settings';
 import DeviceSwitch from './DeviceSwitch';
 import { THEME_COLORS, FONTS, LH_DEFAULT, GAP_DEFAULT } from './theme';
@@ -23,9 +23,17 @@ function Select<T extends string>({ label, value, opts, onChange, disabled }: { 
 }
 
 export default function SettingsPanel({ kind, s, set, close }: P) {
+  const [sub, setSub] = useState<null | 'font'>(null);
   const scroll = s.mode === 'scroll';
   const lh = s.lineHeight === 'original' ? LH_DEFAULT : s.lineHeight;
   const gap = s.paragraphGap === 'original' ? GAP_DEFAULT : s.paragraphGap;
+  if (kind === 'view' && sub === 'font') return (
+    <div className="panel" role="dialog" aria-label="글꼴" onClick={e => e.stopPropagation()}>
+      <div className="phead"><button className="link" onClick={() => setSub(null)}>‹ 보기 설정</button><b>글꼴</b><span style={{ width: 72 }} /></div>
+      <ul className="pbody fontlist">{Object.entries(FONTS).map(([k, f]) =>
+        <li key={k}><button type="button" aria-pressed={s.fontFamily === k} className={s.fontFamily === k ? 'on' : ''} onClick={() => set({ fontFamily: k })}>
+          <span className="fl"><small>{f.label}</small><span style={{ fontFamily: f.css }}>비가 그친 골목에는 젖은 흙냄새가 남아 있었다. Abc 123</span></span>{s.fontFamily === k && <b aria-hidden="true">✓</b>}</button></li>)}</ul>
+    </div>);
   return (
     <div className="panel" role="dialog" aria-label={kind === 'view' ? '보기 설정' : '뷰어 설정'} onClick={e => e.stopPropagation()}>
       <div className="phead"><b>{kind === 'view' ? '보기 설정' : '뷰어 설정'}</b><button className="link" onClick={close}>닫기</button></div>
@@ -35,7 +43,7 @@ export default function SettingsPanel({ kind, s, set, close }: P) {
           <button key={t} role="radio" aria-checked={s.theme === t} aria-label={THEME_COLORS[t].label}
             className={s.theme === t ? 'sel' : ''} style={{ background: THEME_COLORS[t].bg }} onClick={() => set({ theme: t })} />)}</div>
         <Row label="밝기"><input type="range" min={0.3} max={1} step={0.05} value={s.brightness} onChange={e => set({ brightness: +e.target.value })} aria-label="밝기" /></Row>
-        <Select label="글꼴" value={s.fontFamily} opts={Object.entries(FONTS).map(([k, v]) => [k, v.label] as [string, string])} onChange={v => set({ fontFamily: v })} />
+        <button type="button" className="navrow" onClick={() => setSub('font')}><span>글꼴</span><em>{FONTS[s.fontFamily]?.label ?? FONTS.original.label}</em><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
         <Row label="글자 크기" value={String(s.fontSizeLevel)}><Stepper label="글자 크기" dec={() => set({ fontSizeLevel: clamp(s.fontSizeLevel - 1, 1, 10) })} inc={() => set({ fontSizeLevel: clamp(s.fontSizeLevel + 1, 1, 10) })} /></Row>
         <Row label="줄 간격" value={s.lineHeight === 'original' ? '원본' : String(lh)}><Stepper label="줄 간격" reset={() => set({ lineHeight: 'original' })} dec={() => set({ lineHeight: clamp(r1(lh - 0.1), 1.2, 2.6) })} inc={() => set({ lineHeight: clamp(r1(lh + 0.1), 1.2, 2.6) })} /></Row>
         <Row label="문단 간격" value={s.paragraphGap === 'original' ? '원본' : String(gap)}><Stepper label="문단 간격" reset={() => set({ paragraphGap: 'original' })} dec={() => set({ paragraphGap: clamp(r1(gap - 0.2), 0, 2.4) })} inc={() => set({ paragraphGap: clamp(r1(gap + 0.2), 0, 2.4) })} /></Row>

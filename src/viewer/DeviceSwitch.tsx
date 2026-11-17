@@ -5,7 +5,6 @@ const ICON: Record<Device, string> = {
   auto: 'M4 5h12v8H4zM8 16h4',
   mobile: 'M7 3h6a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM9 15h2',
   tablet: 'M4 3h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM9 15h2',
-  desktop: 'M3 4h14v9H3zM7 17h6M10 13v4',
 };
 /** 화면 크기(자동·모바일·태블릿·PC) 아코디언: 현재 값을 보여주는 행을 누르면 목록이 펼쳐지고, 고르면 접힌다. 뷰어 설정 패널에서 쓴다. */
 export default function DeviceSwitch({ value, onChange }: { value: Device; onChange: (d: Device) => void }) {

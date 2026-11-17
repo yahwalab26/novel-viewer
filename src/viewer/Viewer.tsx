@@ -208,9 +208,9 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   </>);
 
   // 화면 크기 미리보기: 모바일·태블릿은 항상 그 크기의 틀로, PC는 화면이 1280×800보다 작을 때만 틀(화면에 안 들어가면 비율대로 축소)
-  const dev = s.device ?? 'auto';
+  const dev: 'auto' | 'mobile' | 'tablet' = s.device === 'mobile' || s.device === 'tablet' ? s.device : 'auto';   // 알 수 없는 저장값은 자동
   const size = dev === 'auto' ? null : DEVICE_SIZE[dev];
-  const framed = !!size && (dev !== 'desktop' || win.w < size.w || win.h < size.h);
+  const framed = !!size;
   const k = framed ? Math.min(1, (win.w - 24) / size!.w, (win.h - 56) / size!.h) : 1;
   const frameStyle: CSSProperties | undefined = framed ? { width: size!.w, height: size!.h, transform: `translate(-50%,-50%) scale(${k})` } : undefined;
   const onDevice = (device: ViewerSettings['device']) => set({ device });

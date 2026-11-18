@@ -5,7 +5,7 @@ import { filterAnns, installProtection, isMine } from './protect';
 import { viewProgress, locateProgress } from '../core/progress';
 import { MemoSheet, SelectionBar, renderSegs } from './AnnotationUI';
 import { DEVICE_SIZE, type ViewerSettings } from '../core/settings';
-import SettingsPanel from './SettingsPanel';
+import SettingsPanel, { rangeP } from './SettingsPanel';
 import NavPanel from './NavPanel';
 import { THEME_COLORS, FONT_SIZES, FONTS, WIDTHS, LH_DEFAULT, GAP_DEFAULT } from './theme';
 
@@ -241,7 +241,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
           <button onClick={() => gotoChapter(0)} disabled={ci === 0}>⇤ 처음으로</button><span className="bsp" />
           <button onClick={() => moveChapter(-1)} disabled={ci === 0}>‹ 이전 화</button>
           <button onClick={() => moveChapter(1)} disabled={lastChapter}>다음 화 ›</button></div>
-        <div className="bseek"><input type="range" min={0} max={1000} step={1} value={seek ?? Math.round(prog * 1000)} aria-label="읽은 위치" aria-valuetext={`${Math.round((seek ?? prog * 1000) / 10)}%`}
+        <div className="bseek"><input type="range" min={0} max={1000} step={1} value={seek ?? Math.round(prog * 1000)} style={rangeP(seek ?? Math.round(prog * 1000), 0, 1000)} aria-label="읽은 위치" aria-valuetext={`${Math.round((seek ?? prog * 1000) / 10)}%`}
           onChange={e => setSeek(+e.target.value)} onPointerUp={commitSeek} onKeyUp={commitSeek} onBlur={commitSeek} /><span>{Math.round((seek ?? prog * 1000) / 10)}%</span></div>
         <div className="btabs">
           <button className={panel === 'toc' ? 'on' : ''} onClick={() => setPanel(panel === 'toc' ? null : 'toc')}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg><span>목차</span></button>

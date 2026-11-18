@@ -15,6 +15,11 @@ function Stepper({ dec, inc, reset, label }: { dec: () => void; inc: () => void;
     {reset && <button onClick={reset} aria-label={`${label} 원본으로`}>↺</button>}
     <button onClick={dec} aria-label={`${label} 줄이기`}>−</button><button onClick={inc} aria-label={`${label} 늘리기`}>+</button></div>;
 }
+const ALIGNS: ['original' | 'left' | 'justify', string][] = [['original', '원본'], ['left', '왼쪽'], ['justify', '양쪽']];
+const SAMPLE = '비가 그친 골목에는 젖은 흙냄새가 남아 있었다. 창밖으로 가로등이 하나둘 켜지기 시작했다.';
+const Chev = () => <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg>;
+/** 슬라이더 채워진 부분(왼쪽)을 그리기 위한 CSS 변수 --p */
+export const rangeP = (v: number, min: number, max: number) => ({ '--p': `${Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100))}%` }) as React.CSSProperties;
 function Toggle({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return <Row label={label}><button role="switch" aria-checked={on} disabled={disabled} className={'sw' + (on ? ' on' : '')} onClick={() => onChange(!on)}><i /></button></Row>;
 }
@@ -23,16 +28,20 @@ function Select<T extends string>({ label, value, opts, onChange, disabled }: { 
 }
 
 export default function SettingsPanel({ kind, s, set, close }: P) {
-  const [sub, setSub] = useState<null | 'font'>(null);
+  const [sub, setSub] = useState<null | 'font' | 'align'>(null);
   const scroll = s.mode === 'scroll';
   const lh = s.lineHeight === 'original' ? LH_DEFAULT : s.lineHeight;
   const gap = s.paragraphGap === 'original' ? GAP_DEFAULT : s.paragraphGap;
-  if (kind === 'view' && sub === 'font') return (
-    <div className="panel" role="dialog" aria-label="글꼴" onClick={e => e.stopPropagation()}>
-      <div className="phead"><button className="link" onClick={() => setSub(null)}>‹ 보기 설정</button><b>글꼴</b><span style={{ width: 72 }} /></div>
-      <ul className="pbody fontlist">{Object.entries(FONTS).map(([k, f]) =>
-        <li key={k}><button type="button" aria-pressed={s.fontFamily === k} className={s.fontFamily === k ? 'on' : ''} onClick={() => set({ fontFamily: k })}>
-          <span className="fl"><small>{f.label}</small><span style={{ fontFamily: f.css }}>비가 그친 골목에는 젖은 흙냄새가 남아 있었다. Abc 123</span></span>{s.fontFamily === k && <b aria-hidden="true">✓</b>}</button></li>)}</ul>
+  if (kind === 'view' && sub) return (
+    <div className="panel" role="dialog" aria-label={sub === 'font' ? '글꼴' : '문단 정렬'} onClick={e => e.stopPropagation()}>
+      <div className="phead"><button className="link" onClick={() => setSub(null)}>‹ 보기 설정</button><b>{sub === 'font' ? '글꼴' : '문단 정렬'}</b><span style={{ width: 72 }} /></div>
+      <ul className="pbody fontlist">{sub === 'font'
+        ? Object.entries(FONTS).map(([k, f]) =>
+          <li key={k}><button type="button" aria-pressed={s.fontFamily === k} className={s.fontFamily === k ? 'on' : ''} onClick={() => set({ fontFamily: k })}>
+            <span className="fl"><small>{f.label}</small><span style={{ fontFamily: f.css }}>비가 그친 골목에는 젖은 흙냄새가 남아 있었다. Abc 123</span></span>{s.fontFamily === k && <b aria-hidden="true">✓</b>}</button></li>)
+        : ALIGNS.map(([k, label]) =>
+          <li key={k}><button type="button" aria-pressed={s.align === k} className={s.align === k ? 'on' : ''} onClick={() => set({ align: k })}>
+            <span className="fl"><small>{label}</small><span style={{ textAlign: k === 'justify' ? 'justify' : 'left' }}>{SAMPLE}</span></span>{s.align === k && <b aria-hidden="true">✓</b>}</button></li>)}</ul>
     </div>);
   return (
     <div className="panel" role="dialog" aria-label={kind === 'view' ? '보기 설정' : '뷰어 설정'} onClick={e => e.stopPropagation()}>
@@ -43,14 +52,14 @@ export default function SettingsPanel({ kind, s, set, close }: P) {
         <div className="themes" role="radiogroup" aria-label="배경색">{THEMES.map(t =>
           <button key={t} role="radio" aria-checked={s.theme === t} aria-label={THEME_COLORS[t].label}
             className={s.theme === t ? 'sel' : ''} style={{ background: THEME_COLORS[t].bg }} onClick={() => set({ theme: t })} />)}</div>
-        <Row label="밝기"><input type="range" min={0.3} max={1} step={0.05} value={s.brightness} onChange={e => set({ brightness: +e.target.value })} aria-label="밝기" /></Row>
+        <Row label="밝기"><input type="range" min={0.3} max={1} step={0.05} value={s.brightness} style={rangeP(s.brightness, 0.3, 1)} onChange={e => set({ brightness: +e.target.value })} aria-label="밝기" /></Row>
         <h4>글자와 문단</h4>
-        <button type="button" className="navrow" onClick={() => setSub('font')}><span>글꼴</span><em>{FONTS[s.fontFamily]?.label ?? FONTS.original.label}</em><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+        <button type="button" className="navrow" onClick={() => setSub('font')}><span>글꼴</span><em>{FONTS[s.fontFamily]?.label ?? FONTS.original.label}</em><Chev /></button>
         <Row label="글자 크기" value={String(s.fontSizeLevel)}><Stepper label="글자 크기" dec={() => set({ fontSizeLevel: clamp(s.fontSizeLevel - 1, 1, 10) })} inc={() => set({ fontSizeLevel: clamp(s.fontSizeLevel + 1, 1, 10) })} /></Row>
         <Row label="줄 간격" value={s.lineHeight === 'original' ? '원본' : String(lh)}><Stepper label="줄 간격" reset={() => set({ lineHeight: 'original' })} dec={() => set({ lineHeight: clamp(r1(lh - 0.1), 1.2, 2.6) })} inc={() => set({ lineHeight: clamp(r1(lh + 0.1), 1.2, 2.6) })} /></Row>
         <Row label="문단 간격" value={s.paragraphGap === 'original' ? '원본' : String(gap)}><Stepper label="문단 간격" reset={() => set({ paragraphGap: 'original' })} dec={() => set({ paragraphGap: clamp(r1(gap - 0.2), 0, 2.4) })} inc={() => set({ paragraphGap: clamp(r1(gap + 0.2), 0, 2.4) })} /></Row>
         <Row label="문단 너비" value={String(s.paragraphWidthLevel)}><Stepper label="문단 너비" dec={() => set({ paragraphWidthLevel: clamp(s.paragraphWidthLevel - 1, 1, 5) })} inc={() => set({ paragraphWidthLevel: clamp(s.paragraphWidthLevel + 1, 1, 5) })} /></Row>
-        <Select label="문단 정렬" value={s.align} opts={[['original', '원본'], ['left', '왼쪽'], ['justify', '양쪽']]} onChange={v => set({ align: v })} />
+        <button type="button" className="navrow" onClick={() => setSub('align')}><span>문단 정렬</span><em>{ALIGNS.find(([k]) => k === s.align)?.[1] ?? '원본'}</em><Chev /></button>
         <Toggle label="형광펜 보기" on={s.highlight} onChange={v => set({ highlight: v })} />
         </> : <>
         <h4>화면</h4>

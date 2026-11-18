@@ -16,7 +16,6 @@ function Stepper({ dec, inc, reset, label }: { dec: () => void; inc: () => void;
     <button onClick={dec} aria-label={`${label} 줄이기`}>−</button><button onClick={inc} aria-label={`${label} 늘리기`}>+</button></div>;
 }
 const ALIGNS: ['original' | 'left' | 'justify', string][] = [['original', '원본'], ['left', '왼쪽'], ['justify', '양쪽']];
-const SAMPLE = '비가 그친 골목에는 젖은 흙냄새가 남아 있었다. 창밖으로 가로등이 하나둘 켜지기 시작했다.';
 const Chev = () => <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg>;
 /** 슬라이더 채워진 부분(왼쪽)을 그리기 위한 CSS 변수 --p */
 export const rangeP = (v: number, min: number, max: number) => ({ '--p': `${Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100))}%` }) as React.CSSProperties;
@@ -40,8 +39,8 @@ export default function SettingsPanel({ kind, s, set, close }: P) {
           <li key={k}><button type="button" aria-pressed={s.fontFamily === k} className={s.fontFamily === k ? 'on' : ''} onClick={() => set({ fontFamily: k })}>
             <span className="fl"><small>{f.label}</small><span style={{ fontFamily: f.css }}>비가 그친 골목에는 젖은 흙냄새가 남아 있었다. Abc 123</span></span>{s.fontFamily === k && <b aria-hidden="true">✓</b>}</button></li>)
         : ALIGNS.map(([k, label]) =>
-          <li key={k}><button type="button" aria-pressed={s.align === k} className={s.align === k ? 'on' : ''} onClick={() => set({ align: k })}>
-            <span className="fl"><small>{label}</small><span style={{ textAlign: k === 'justify' ? 'justify' : 'left' }}>{SAMPLE}</span></span>{s.align === k && <b aria-hidden="true">✓</b>}</button></li>)}</ul>
+          <li key={k}><button type="button" aria-pressed={s.align === k} className={'plainpick' + (s.align === k ? ' on' : '')} onClick={() => set({ align: k })}>
+            <span>{label}</span>{s.align === k && <b aria-hidden="true">✓</b>}</button></li>)}</ul>
     </div>);
   return (
     <div className="panel" role="dialog" aria-label={kind === 'view' ? '보기 설정' : '뷰어 설정'} onClick={e => e.stopPropagation()}>

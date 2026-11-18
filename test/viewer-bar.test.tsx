@@ -195,15 +195,15 @@ describe('하단 슬라이더(위치 %) · 스크롤로는 바가 나타나지 �
 });
 
 describe('문단 정렬 선택 화면 · 슬라이더 디자인', () => {
-  it('보기 설정의 문단 정렬 행(원본 ›)을 누르면 정렬 목록(미리보기)이 열리고, 고르면 적용된다', async () => {
+  it('보기 설정의 문단 정렬 행(원본 ›)을 누르면 정렬 목록(이름만)이 열리고, 고르면 적용된다', async () => {
     const set = vi.fn(); const api = createMockApi();
     await act(async () => { root.render(<Viewer repo={api.repo} book={mockBook('b1')} state={null} settings={{ ...DEFAULT_SETTINGS, align: 'original' }} onSettings={set} onProgress={() => {}} onClose={() => {}} />); });
     await click(btn('보기 설정')!);
     const row = Array.from(host.querySelectorAll<HTMLButtonElement>('.panel .navrow')).find(b => b.textContent?.includes('문단 정렬'))!;
     expect(row.textContent).toContain('원본'); await click(row);
     expect(host.querySelector('[role=dialog][aria-label="문단 정렬"]')).toBeTruthy();
-    const items = Array.from(host.querySelectorAll<HTMLButtonElement>('.fontlist button')); expect(items.map(b => b.querySelector('small')!.textContent)).toEqual(['원본', '왼쪽', '양쪽']);
-    expect((items[2].querySelector('.fl span') as HTMLElement).style.textAlign).toBe('justify');
+    const items = Array.from(host.querySelectorAll<HTMLButtonElement>('.fontlist button')); expect(items.map(b => b.textContent?.replace('✓', ''))).toEqual(['원본', '왼쪽', '양쪽']);
+    expect(host.querySelector('.fontlist')!.textContent).not.toContain('비가 그친');            // 샘플 문장 없음
     await click(items[2]); expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ align: 'justify' }));
     await click(Array.from(host.querySelectorAll<HTMLElement>('.panel .link')).find(b => b.textContent?.includes('보기 설정'))!);
     expect(host.querySelector('[role=dialog][aria-label="보기 설정"]')).toBeTruthy();

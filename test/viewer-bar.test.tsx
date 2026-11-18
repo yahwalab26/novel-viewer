@@ -193,3 +193,25 @@ describe('하단 슬라이더(위치 %) · 스크롤로는 바가 나타나지 �
     expect(css).toContain('.wrap::-webkit-scrollbar{display:none}');
   });
 });
+
+describe('문단 정렬 선택 화면 · 슬라이더 디자인', () => {
+  it('보기 설정의 문단 정렬 행(원본 ›)을 누르면 정렬 목록(미리보기)이 열리고, 고르면 적용된다', async () => {
+    const set = vi.fn(); const api = createMockApi();
+    await act(async () => { root.render(<Viewer repo={api.repo} book={mockBook('b1')} state={null} settings={{ ...DEFAULT_SETTINGS, align: 'original' }} onSettings={set} onProgress={() => {}} onClose={() => {}} />); });
+    await click(btn('보기 설정')!);
+    const row = Array.from(host.querySelectorAll<HTMLButtonElement>('.panel .navrow')).find(b => b.textContent?.includes('문단 정렬'))!;
+    expect(row.textContent).toContain('원본'); await click(row);
+    expect(host.querySelector('[role=dialog][aria-label="문단 정렬"]')).toBeTruthy();
+    const items = Array.from(host.querySelectorAll<HTMLButtonElement>('.fontlist button')); expect(items.map(b => b.querySelector('small')!.textContent)).toEqual(['원본', '왼쪽', '양쪽']);
+    expect((items[2].querySelector('.fl span') as HTMLElement).style.textAlign).toBe('justify');
+    await click(items[2]); expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ align: 'justify' }));
+    await click(Array.from(host.querySelectorAll<HTMLElement>('.panel .link')).find(b => b.textContent?.includes('보기 설정'))!);
+    expect(host.querySelector('[role=dialog][aria-label="보기 설정"]')).toBeTruthy();
+  });
+  it('슬라이더는 채움 비율(--p)을 갖고, CSS는 2px 가는 선·작은 손잡이다', async () => {
+    await mount(); const r = host.querySelector<HTMLInputElement>('.bar.bottom input[type=range]')!; expect(r.style.getPropertyValue('--p')).toMatch(/%$/);
+    const css = fs.readFileSync('src/styles.css', 'utf8').replace(/\s+/g, '');
+    expect(css).toContain('::-webkit-slider-runnable-track{height:2px'); expect(css).toContain('::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px');
+  });
+});
+

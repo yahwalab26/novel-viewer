@@ -168,4 +168,6 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .bar .bnav button{color:var(--v-mute);font-size:var(--fs-sm)}.bar .bnav button:not(:disabled){color:var(--fg)}
 .bseek{gap:var(--s4);padding:0}.bseek span{min-width:2.6em;color:var(--v-mute);font-size:var(--fs-xs);opacity:1}
 .bar .btabs button{opacity:1;color:var(--v-mute)}.bar .btabs button.on{color:var(--fg)}
+/* 글자 없이 이름만 고르는 선택 화면(문단 정렬) */
+.panel .fontlist .plainpick{min-height:56px;font-weight:500}.panel .fontlist .plainpick span{flex:1}.panel .fontlist .plainpick.on{font-weight:700}
 

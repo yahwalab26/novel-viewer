@@ -1,5 +1,5 @@
 import type { Block, Parser } from '../core/model';
-import { SCENE_RE, splitByPattern } from '../core/chapters';
+import { CHAPTER_RE, PART_RE, SCENE_RE, splitByPattern } from '../core/chapters';
 import { loadPdfjs } from './pdfLoader';
 import { itemsToLines, linesToParagraphs, type PdfLine } from './pdfText';
 
@@ -19,10 +19,16 @@ export const pdfParser: Parser = {
     const paras = linesToParagraphs(pages);
     if (paras.join('').replace(/\s/g, '').length < 20) throw new Error('PDF: 읽을 수 있는 글자가 없어요 (스캔·이미지 PDF는 지원하지 않아요)');
     const blocks: Block[] = paras.map(t => SCENE_RE.test(t) ? { type: 'scene', text: t } : { type: 'p', text: t });
+    // "SECOND ALBUM <…>" 같은 묶음 제목은 바로 뒤 회차 제목 다음(그 회차의 첫 줄)으로 옮겨 소제목으로 보여준다
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i]; if (b.type !== 'p' || b.text.length > 60 || !PART_RE.test(b.text)) continue;
+      const nx = blocks[i + 1]; blocks[i] = { type: 'h', text: b.text.trim() };
+      if (nx && nx.type === 'p' && nx.text.length <= 40 && CHAPTER_RE.test(nx.text)) { blocks[i] = nx; blocks[i + 1] = { type: 'h', text: b.text.trim() }; i++; }
+    }
     const info = (await doc.getMetadata().catch(() => null))?.info ?? {};
     const clean = (s: unknown) => typeof s === 'string' && s.trim() && !/^(untitled|무제)/i.test(s.trim()) ? s.trim() : undefined;
     const title = clean(info.Title) || fileName.replace(/\.pdf$/i, '');
     await task.destroy?.();
-    return { title, author: clean(info.Author), format: 'pdf', parserVersion: 1, chapters: splitByPattern(blocks, title) };
+    return { title, author: clean(info.Author), format: 'pdf', parserVersion: 2, chapters: splitByPattern(blocks, title) };
   },
 };

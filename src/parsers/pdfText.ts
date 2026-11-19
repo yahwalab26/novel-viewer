@@ -39,6 +39,40 @@ export function stripPageFurniture(pages: PdfLine[][]): PdfLine[][] {
   return pages.map(p => p.filter((l, i) => !((i === 0 || i === p.length - 1) && (isPageNo(l.text) || repeated(l.text)))));
 }
 
+// ── 줄이 바뀌는 자리에 공백을 넣을지 판단 ──────────────────────────────────────────────
+// 어떤 PDF 는 '글자 단위'로 줄을 바꿔서 단어 중간에서 줄이 끊긴다("팔다|리", "메이크|업"). 이때 무조건 공백을 넣으면 단어가 갈라진다.
+// 같은 PDF 의 줄 안쪽 글자 쌍("공백 없이 이어진 쌍" vs "공백으로 갈라진 쌍")을 세어 두고, 줄 바꿈 자리의 쌍이 어느 쪽에 가까운지 본다.
+// 줄 바꿈 자리가 대부분 '공백 쪽'이면 낱말 단위 줄바꿈 PDF 이므로 지금처럼 항상 공백을 넣는다(판단이 서지 않을 때도 공백).
+const isHangul = (c: string | undefined) => !!c && c >= '가' && c <= '힣';
+const WRAP_PUNCT_RE = /[.!?…。？！)」』”’"'\]]$/;
+
+export type JoinModel = { wordWrap: boolean; space: (a: string, b: string) => boolean };
+export function buildJoinModel(texts: string[], breaks: [string, string][]): JoinModel {
+  const within = new Map<string, number>(), cross = new Map<string, number>();
+  const tokStart = new Map<string, number>(), tokEnd = new Map<string, number>(), occ = new Map<string, number>();
+  const inc = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) ?? 0) + 1);
+  for (const t of texts) {
+    const toks = t.split(/\s+/).filter(Boolean);
+    toks.forEach((tok, k) => {
+      for (const c of tok) if (isHangul(c)) inc(occ, c);
+      if (isHangul(tok[0])) inc(tokStart, tok[0]); if (isHangul(tok[tok.length - 1])) inc(tokEnd, tok[tok.length - 1]);
+      for (let i = 0; i + 1 < tok.length; i++) if (isHangul(tok[i]) && isHangul(tok[i + 1])) inc(within, tok[i] + tok[i + 1]);
+      const nx = toks[k + 1]; if (nx && isHangul(tok[tok.length - 1]) && isHangul(nx[0])) inc(cross, tok[tok.length - 1] + nx[0]);
+    });
+  }
+  const clamp = (x: number) => Math.min(0.98, Math.max(0.02, x));
+  const pSpace = (a: string, b: string) => {                       // 이 두 글자 사이에 공백이 있을 확률
+    const w = within.get(a + b) ?? 0, c = cross.get(a + b) ?? 0;
+    const re = clamp((tokEnd.get(a) ?? 0) / Math.max(1, occ.get(a) ?? 0)), rs = clamp((tokStart.get(b) ?? 0) / Math.max(1, occ.get(b) ?? 0));
+    const odds = (re * rs) / ((1 - re) * (1 - rs)), q = odds / (1 + odds), k = 2;   // 글자 쌍을 본 적이 적으면 '낱말 끝·낱말 시작 비율'로 대신 추정
+    return (c + k * q) / (c + w + k);
+  };
+  const pairs = breaks.filter(([a, b]) => isHangul(a) && isHangul(b));
+  const mean = pairs.length ? pairs.reduce((n, [a, b]) => n + pSpace(a, b), 0) / pairs.length : 1;
+  const wordWrap = pairs.length < 30 || mean >= 0.6;
+  return { wordWrap, space: (a, b) => wordWrap || !isHangul(a) || !isHangul(b) || pSpace(a, b) >= 0.5 };
+}
+
 /** 줄들 → 문단. 새 문단 조건: 들여쓰기 · 줄 간격이 넓음 · 문장이 끝난 짧은 줄 뒤 · 문장 끝 뒤 따옴표로 시작 · 제목/장면 구분 줄 */
 export function linesToParagraphs(rawPages: PdfLine[][]): string[] {
   const pages = stripPageFurniture(rawPages);
@@ -53,15 +87,21 @@ export function linesToParagraphs(rawPages: PdfLine[][]): string[] {
   const P = median(pitches) || S * 1.5;
   const standalone = (l: { text: string; size: number }) => SCENE_RE.test(l.text) || (l.text.length <= 40 && CHAPTER_RE.test(l.text)) || l.size > S * 1.25;
 
-  const out: string[] = []; let cur = '';
-  all.forEach((l, i) => {
+  const starts = all.map((l, i) => {
     const prev = all[i - 1];
-    const startsNew = !prev || standalone(l) || standalone(prev)
+    return !prev || standalone(l) || standalone(prev)
       || l.x - L > S * 0.6
       || (prev.pi === l.pi && prev.y - l.y > P * 1.45)
       || (END_RE.test(prev.text) && (prev.right < R - S * 2.5 || OPEN_RE.test(l.text)));
-    if (startsNew) { if (cur) out.push(cur); cur = l.text.trim(); }
-    else cur += (/\s$/.test(cur) ? '' : ' ') + l.text.trim();
+  });
+  const breaks: [string, string][] = [];                              // 같은 문단 안에서 줄이 바뀌는 자리의 앞·뒤 글자
+  all.forEach((l, i) => { if (!starts[i] && !WRAP_PUNCT_RE.test(all[i - 1].text.trim())) breaks.push([all[i - 1].text.trim().slice(-1), l.text.trim()[0]]); });
+  const join = buildJoinModel(all.map(l => l.text), breaks);
+
+  const out: string[] = []; let cur = '';
+  all.forEach((l, i) => {
+    if (starts[i]) { if (cur) out.push(cur); cur = l.text.trim(); }
+    else { const t = l.text.trim(); cur += (/\s$/.test(cur) || !join.space(cur.slice(-1), t[0]) ? '' : ' ') + t; }
   });
   if (cur) out.push(cur);
   return out.map(t => t.replace(/\s+/g, ' ').trim()).filter(Boolean);

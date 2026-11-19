@@ -78,7 +78,7 @@ export default function SettingsPanel({ kind, s, set, close }: P) {
         <Toggle label="화면 항상 켜짐" on={s.keepScreenOn} onChange={v => set({ keepScreenOn: v })} />
         <button className="link reset" onClick={() => set({ ...DEFAULT_SETTINGS })}>설정 초기화</button>
         </>}
-        <p className="hint ver">웹소설 뷰어 v{__APP_VERSION__}</p>
+        {kind === 'viewer' && <p className="hint ver">웹소설 뷰어 v{__APP_VERSION__}</p>}
       </div>
     </div>
   );

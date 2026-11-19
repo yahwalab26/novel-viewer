@@ -97,7 +97,19 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   }, [currentBlock, measure, ch.id, book.id, onProgress]);
   const [prog, setProg] = useState(0);                      // 화면에 보여 주는 읽은 비율(0~1)
   const progTimer = useRef<number>();
-  const refreshProg = useCallback(() => setProg(measure()), [measure]);
+  // 지금 화면에 보이는 문단 번호 범위[처음, 끝] — 책갈피 아이콘 채움·삭제 기준
+  const visibleRange = useCallback((): [number, number] => {
+    const f = flow.current ?? wrap.current; const first = currentBlock(); if (!f) return [first, first];
+    const kids = Array.from(f.querySelectorAll<HTMLElement>('[data-i]')); let last = first;
+    for (const k of kids) {
+      const i = Number(k.dataset.i); if (i <= first) continue;
+      const seen = scroll ? k.getBoundingClientRect().top < wrap.current!.getBoundingClientRect().bottom : k.offsetLeft < (page + 1) * stride.current - 1;
+      if (!seen) break; last = i;
+    }
+    return [first, last];
+  }, [currentBlock, scroll, page]);
+  const [vis, setVis] = useState<[number, number]>([0, 0]);
+  const refreshProg = useCallback(() => { setProg(measure()); setVis(visibleRange()); }, [measure, visibleRange]);
   const scheduleProg = () => { if (progTimer.current) return; progTimer.current = window.setTimeout(() => { progTimer.current = undefined; refreshProg(); }, 120); };
   useEffect(() => { refreshProg(); }, [refreshProg, tick, s.fontSizeLevel, s.lineHeight, s.paragraphGap, s.paragraphWidthLevel, s.fontFamily, s.align]);
   useEffect(() => () => clearTimeout(progTimer.current), []);
@@ -133,13 +145,14 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   }, [scroll, page, moveChapter]);
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest('select,input')) return;
-      if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) { e.preventDefault(); next(); }
+      if ((e.target as HTMLElement | null)?.closest?.('select,input')) return;
+      if (scroll && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { e.preventDefault(); touched.current = true; moveChapter(e.key === 'ArrowRight' ? 1 : -1); }   // 스크롤 모드: ←/→ = 이전/다음 화 (PageUp/Down·Space 는 화면 스크롤)
+      else if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) { e.preventDefault(); next(); }
       else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) { e.preventDefault(); prev(); }
       else if (e.key === 'Escape') panel ? setPanel(null) : setBar(b => !b);
     };
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
-  }, [next, prev, panel]);
+  }, [next, prev, panel, scroll, moveChapter]);
 
   const tap = (e: React.MouseEvent) => {
     if (window.getSelection()?.toString()) return;                  // 선택(형광펜 준비) 중엔 무시
@@ -189,8 +202,9 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   const say = (m: string) => { setToast(m); window.setTimeout(() => setToast(''), 1800); };
   const delBookmark = (id: string) => { setBms(l => l.filter(x => x.id !== id)); repo.deleteBookmark(book.id, id).catch(() => say('북마크 삭제에 실패했어요')); };
   const toggleBookmark = () => {
-    const bi = currentBlock(), ex = bms.find(b => b.chapterId === ch.id && b.blockIndex === bi);
-    if (ex) { delBookmark(ex.id); say('북마크를 삭제했어요'); return; }
+    const [v0, v1] = visibleRange(), here = bms.filter(b => b.chapterId === ch.id && b.blockIndex >= v0 && b.blockIndex <= v1);
+    if (here.length) { here.forEach(b => delBookmark(b.id)); say('북마크를 삭제했어요'); return; }
+    const bi = v0;
     const blk = ch.blocks[bi], label = blk && (blk.type === 'p' || blk.type === 'h') ? blk.text.replace(/\s+/g, ' ').trim().slice(0, 40) : '';
     const bm: Bookmark = { id: crypto.randomUUID(), bookId: book.id, chapterId: ch.id, blockIndex: bi, label, createdAt: Date.now() };
     setBms(l => [...l, bm]); say('북마크를 추가했어요');
@@ -200,6 +214,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     if (seek === null) return; const loc = locateProgress(book.chapters, seek / 1000); setSeek(null);
     noHide.current = Date.now(); seekTo(loc.ci, loc.blockIndex);
   };
+  const bmHere = bms.some(b => b.chapterId === ch.id && b.blockIndex >= vis[0] && b.blockIndex <= vis[1]);   // 지금 보이는 곳에 북마크가 있으면 채움
   const goTo = (idx: number, bi: number) => { setPanel(null); seekTo(idx, bi); };
   const seekTo = (idx: number, bi: number) => {
     if (idx === ci) { const el = (flow.current ?? wrap.current)?.querySelector<HTMLElement>(`[data-i="${bi}"]`); if (!el) return; scroll ? el.scrollIntoView({ block: 'center' }) : setPage(Math.floor(el.offsetLeft / stride.current)); }
@@ -218,7 +233,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     <h2 className="ch-title">{ch.title}</h2>
     {ch.blocks.map((b, i) => b.type === 'p' ? <p key={i} data-i={i}>{renderSegs(b.text, byBlock.get(i), meId)}</p>
       : b.type === 'h' ? <h3 key={i} data-i={i}>{b.text}</h3>
-      : b.type === 'scene' ? <div key={i} data-i={i} className="scene" role="separator">◇</div> : null)}
+      : b.type === 'scene' ? <div key={i} data-i={i} className="scene" role="separator">{b.text}</div> : null)}
   </>);
 
   // 화면 크기 미리보기: 모바일·태블릿은 항상 그 크기의 틀로, PC는 화면이 1280×800보다 작을 때만 틀(화면에 안 들어가면 비율대로 축소)
@@ -232,8 +247,8 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
     {framed && <div className="vbackdrop" aria-hidden="true"><span>{dev === 'mobile' ? '모바일' : dev === 'tablet' ? '태블릿' : 'PC'} · {size!.w}×{size!.h}{k < 1 ? ` (${Math.round(k * 100)}%로 축소)` : ''}</span></div>}
     <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}${framed ? ' framed' : ''}`} data-device={framed ? dev : 'auto'} style={{ ...vars, ...frameStyle }}>
       <div className={'bar top' + (bar || panel ? '' : ' hide')}>
-        <button className="back" onClick={close} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><small className="bar-ver" aria-hidden="true">v{__APP_VERSION__}</small><span className="bsp" />
-        <button className="bmbtn" onClick={toggleBookmark} aria-pressed={bms.some(b => b.chapterId === ch.id)} aria-label="현재 위치 북마크 추가/삭제"><svg width="22" height="22" viewBox="0 0 24 24" fill={bms.some(b => b.chapterId === ch.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" aria-hidden="true"><path d="M6.5 3.5h11v17l-5.5-4-5.5 4z" /></svg></button>
+        <button className="back" onClick={close} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><span className="bsp" />
+        <button className="bmbtn" onClick={toggleBookmark} aria-pressed={bmHere} aria-label="현재 위치 북마크 추가/삭제"><svg width="22" height="22" viewBox="0 0 24 24" fill={bmHere ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" aria-hidden="true"><path d="M6.5 3.5h11v17l-5.5-4-5.5 4z" /></svg></button>
         <span className="ttl">{book.title}</span></div>
       {!bar && !panel && <button className="peek" onClick={close} aria-label="작품 목록으로"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button>}
       <div className={'bar bottom' + (bar || panel ? '' : ' hide')} onClick={e => e.stopPropagation()}>
@@ -255,7 +270,6 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
       {!scroll && <div className="foot"><span>{info(s.bottomInfo.left)}</span><span>{info(s.bottomInfo.right)}</span></div>}
       <div className="vprog" role="progressbar" aria-label="읽은 비율" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(prog * 100)}><i style={{ width: `${prog * 100}%` }} /></div>
       {(scroll || s.bottomInfo.right === 'none') && <span className="vpct" aria-hidden="true">{Math.round(prog * 100)}%</span>}
-      {(scroll || s.bottomInfo.left === 'none') && <span className="vver" aria-hidden="true">v{__APP_VERSION__}</span>}
       <div className="dim" style={{ opacity: (1 - s.brightness) * 0.8 }} />
       {sel && !edit && !panel && <SelectionBar note={sel.clamped ? '첫 문단에만 적용돼요' : undefined} onColor={c => { const a = build(c); if (a) saveAnn(a); clearSel(); }} onMemo={() => { const a = build('yellow'); if (a) setEdit({ ann: a, isNew: true }); clearSel(); }} />}
       {edit && <MemoSheet key={edit.ann.id} ann={edit.ann} isNew={edit.isNew} readOnly={edit.readOnly} authorName={names?.[edit.ann.authorId]} onClose={() => setEdit(null)} onDelete={() => { delAnn(edit.ann.id); setEdit(null); }} onSave={a => { saveAnn(a); setEdit(null); }} />}

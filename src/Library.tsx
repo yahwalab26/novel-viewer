@@ -48,7 +48,7 @@ export default function Library() {
       <div className="lb-head">
         <h2 className="lb-title">이 기기의 원고<span className="count">{list.length}편</span></h2>
         <button type="button" className="primary" onClick={() => input.current?.click()} disabled={busy}>{busy ? <><span className="spinner on-dark" aria-hidden="true" />추가하는 중</> : '파일 추가'}</button>
-        <input ref={input} type="file" hidden multiple accept=".epub,.docx,.hwpx,.hwp" onChange={e => { if (e.target.files) add(e.target.files); e.target.value = ''; }} />
+        <input ref={input} type="file" hidden multiple accept=".epub,.docx,.hwpx,.hwp,.pdf" onChange={e => { if (e.target.files) add(e.target.files); e.target.value = ''; }} />
       </div>
       <p className="lb-note">이 브라우저에만 저장되고 서버에는 올라가지 않습니다.</p>
       {msg && <p className="err" role="alert">{msg}</p>}

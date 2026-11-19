@@ -68,8 +68,8 @@ export default function ServerLibrary({ api, userId, myName }: { api: Api; userI
       <div className="lb-head">
         <h2 className="lb-title">원고{books && <span className="count">{books.length}편</span>}</h2>
         <button type="button" className="primary" disabled={!!busy} onClick={() => input.current?.click()}>{busy ? <><span className="spinner on-dark" aria-hidden="true" />올리는 중</> : '원고 올리기'}</button>
-        <input ref={input} type="file" hidden multiple accept=".epub,.docx,.hwpx,.hwp" onChange={e => { if (e.target.files) upload(e.target.files); e.target.value = ''; }} />
-        <input ref={reviseInput} type="file" hidden accept=".epub,.docx,.hwpx,.hwp" onChange={e => { if (e.target.files && reviseId.current) upload(e.target.files, reviseId.current); e.target.value = ''; }} />
+        <input ref={input} type="file" hidden multiple accept=".epub,.docx,.hwpx,.hwp,.pdf" onChange={e => { if (e.target.files) upload(e.target.files); e.target.value = ''; }} />
+        <input ref={reviseInput} type="file" hidden accept=".epub,.docx,.hwpx,.hwp,.pdf" onChange={e => { if (e.target.files && reviseId.current) upload(e.target.files, reviseId.current); e.target.value = ''; }} />
       </div>
       {busy && <p className="lb-note" role="status">{busy}</p>}
       {msg && <p className="err" role="alert">{msg}</p>}

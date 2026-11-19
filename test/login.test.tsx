@@ -82,7 +82,7 @@ describe('설치 앱(standalone) 여백', () => {
     const css = fs.readFileSync('src/styles.css', 'utf-8');
     expect(css).toContain('html.standalone{--padx-extra:1pt}');
     expect(css).toMatch(/\.wrap\{[^}]*calc\(var\(--padx\) \+ var\(--padx-extra,0px\)\)/);
-    expect(css).toContain(':root{--padx:20px}'); expect(css).toMatch(/@media \(min-width:900px\)\{[\s\S]*?:root\{--padx:40px\}/);
+    expect(css).toContain(':root{--padx:20px}'); expect(css).toMatch(/@container viewer \(min-width:900px\)\{[\s\S]*?\.wrap,\.foot,\.vpct\{--padx:40px\}/);   // 뷰어 폭 기준(미리보기 틀에서도 동일)
   });
 });
 

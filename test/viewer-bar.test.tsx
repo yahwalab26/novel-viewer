@@ -215,3 +215,35 @@ describe('문단 정렬 선택 화면 · 슬라이더 디자인', () => {
   });
 });
 
+describe('v0.17.4 — 버전 표시·◇·키보드·책갈피', () => {
+  const Host2 = ({ init }: { init: any }) => { const [st, setSt] = useState(init); const api = createMockApi();
+    return <Viewer repo={api.repo} book={mockBook('b1')} state={null} settings={st} onSettings={setSt} onProgress={() => {}} onClose={() => {}} />; };
+  const key = async (k: string) => { await act(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })); }); };
+  it('읽기 화면(상단 바·왼쪽 아래)에는 버전이 없고, 뷰어 설정 맨 아래에만 있다', async () => {
+    await mount(); expect(host.textContent).not.toMatch(/\bv(test|\d+\.\d+)/);
+    await click(btn('보기 설정')!); expect(host.querySelector('.panel')!.textContent).not.toMatch(/\bv(test|\d+\.\d+)/);
+    await click(btn('뷰어 설정')!); expect(host.querySelector('.panel .hint.ver')!.textContent).toMatch(/웹소설 뷰어 v\S+/);
+  });
+  it('장면 구분은 ◇ 로 바꾸지 않고 원문 그대로 보인다(글자 없는 옛 데이터는 빈 간격)', async () => {
+    const book = mockBook('b1'); book.chapters[0] = { ...book.chapters[0], blocks: [{ type: 'p', text: '앞' }, { type: 'scene', text: '***' }, { type: 'p', text: '뒤' }, { type: 'scene' }, { type: 'p', text: '끝' }] } as any;
+    const api = createMockApi();
+    await act(async () => { root.render(<Viewer repo={api.repo} book={book} state={null} settings={{ ...DEFAULT_SETTINGS, mode: 'scroll' }} onSettings={() => {}} onProgress={() => {}} onClose={() => {}} />); });
+    const sc = Array.from(host.querySelectorAll('.scene')); expect(sc.map(e => e.textContent)).toEqual(['***', '']); expect(host.textContent).not.toContain('◇');
+  });
+  it('스크롤 모드에서 →/← 키는 다음/이전 화로 이동한다', async () => {
+    await act(async () => { root.render(<Host2 init={{ ...DEFAULT_SETTINGS, mode: 'scroll' }} />); });
+    const h = () => host.querySelector('.wrap')!.textContent!; expect(h()).toContain('1화');
+    await key('ArrowRight'); expect(h()).toContain('2화'); await key('ArrowLeft'); expect(h()).toContain('1화');
+  });
+});
+
+describe('책갈피 아이콘: 지금 보는 위치 기준', () => {
+  it('누르면 채워지고(현재 위치에 북마크), 다시 누르면 비워진다', async () => {
+    await mount();
+    const bm = () => host.querySelector<HTMLButtonElement>('.bar.top button[aria-label*="북마크"]')!;
+    expect(bm().getAttribute('aria-pressed')).toBe('false');
+    await click(bm()); expect(bm().getAttribute('aria-pressed')).toBe('true'); expect(bm().querySelector('svg')!.getAttribute('fill')).toBe('currentColor');
+    await click(bm()); expect(bm().getAttribute('aria-pressed')).toBe('false');
+  });
+});
+

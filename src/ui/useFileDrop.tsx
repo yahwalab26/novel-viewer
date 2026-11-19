@@ -28,5 +28,5 @@ export function useFileDrop(onFiles: (files: File[]) => void, enabled = true): b
 /** 파일을 끌고 있는 동안 화면 전체에 뜨는 안내 */
 export function DropOverlay({ show, children }: { show: boolean; children: string }) {
   if (!show) return null;
-  return <div className="drop-overlay" role="status" aria-live="polite"><div className="drop-box"><strong>{children}</strong><span>EPUB, DOCX, HWPX, HWP</span></div></div>;
+  return <div className="drop-overlay" role="status" aria-live="polite"><div className="drop-box"><strong>{children}</strong><span>EPUB, DOCX, HWPX, HWP, PDF</span></div></div>;
 }

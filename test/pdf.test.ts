@@ -49,3 +49,38 @@ describe('linesToParagraphs (줄 → 문단 규칙)', () => {
   });
   it('빈 입력', () => { expect(linesToParagraphs([])).toEqual([]); });
 });
+
+describe('줄바꿈 자리 공백 (글자 단위 줄바꿈 PDF) · 회차/묶음 제목', () => {
+  const SENT = ['영원은 도현의 어깨를 흔들었다.', '도현이 눈꺼풀을 천천히 들어 올렸다.', '촬영장에는 이미 사람들이 가득 모여 있었다.', '메이크업을 받는 내내 졸았다고 말했다.', '긴 팔다리 때문에 소파가 불편해 보였다.', '정작 본인은 아무렇지도 않은 모양이었다.'];
+  const paras = Array.from({ length: 40 }, (_, i) => [0, 1, 2].map(k => SENT[(i + k * 2) % SENT.length]).join(' '));
+  const lay = (wrap: (t: string) => string[]): PdfLine[][] => {           // 문단들을 줄로 펼친다(첫 줄 들여쓰기 10)
+    let y = 800; const lines: PdfLine[] = [];
+    for (const p of paras) { wrap(p).forEach((t, k) => { lines.push({ text: t, x: k === 0 ? 20 : 10, y, right: 210, size: 10 }); y -= 14; }); y -= 14; }
+    return [lines];
+  };
+  it('글자 단위로 줄이 끊긴 PDF: 단어 중간의 공백이 생기지 않는다', () => {
+    const chars = (t: string) => { const out: string[] = []; for (let i = 0; i < t.length; i += 14) out.push(t.slice(i, i + 14).replace(/^\s+/, '')); return out; };
+    const got = linesToParagraphs(lay(chars));
+    const exact = got.filter((g, i) => g === paras[i]).length;
+    expect(got.length).toBe(paras.length); expect(exact / paras.length).toBeGreaterThanOrEqual(0.8);
+    expect(got.join('\n')).not.toContain('팔다 리'); expect(got.join('\n')).not.toContain('메이크 업');
+  });
+  it('낱말 단위로 줄이 바뀌는 PDF: 줄 사이에는 지금처럼 공백', () => {
+    const words = (t: string) => { const out: string[] = []; let cur = ''; for (const w of t.split(' ')) { if ((cur + ' ' + w).trim().length > 14 && cur) { out.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); } if (cur) out.push(cur); return out; };
+    expect(linesToParagraphs(lay(words))).toEqual(paras);
+  });
+  it('Track 회차 제목 + ALBUM 묶음 제목은 그 회차의 첫 줄(소제목)로', async () => {
+    const mk = (str: string, x: number, y: number) => ({ str, transform: [1, 0, 0, 10, x, y], width: str.length * 10, height: 10 });
+    const body = (y: number, a: string) => [mk(a, 95, y), mk('두 번째 줄은 들여쓰기 없이 이어진다.', 85, y - 14)];
+    const items = [mk('Track 08. Back to You', 95, 700), ...body(660, '여덟 번째 트랙의 본문이 여기에서 시작되었다.'), mk('SECOND ALBUM <Us, as Usual>', 95, 600), mk('Track 09. 174', 95, 570), ...body(530, '아홉 번째 트랙의 본문이 여기에서 시작되었다.')];
+    const page = { getTextContent: async () => ({ items }), cleanup() {} };
+    mockState.fake = { getDocument: () => ({ promise: Promise.resolve({ numPages: 1, getPage: async () => page, getMetadata: async () => ({ info: {} }) }), destroy: async () => {} }) };
+    try {
+      const book = await pdfParser.parse(buf('test/fixtures/sample-ko.pdf'), 'x.pdf');
+      expect(book.chapters.map(c => c.title)).toEqual(['Track 08. Back to You', 'Track 09. 174']);
+      expect(book.chapters[1].blocks[0]).toEqual({ type: 'h', text: 'SECOND ALBUM <Us, as Usual>' });
+      expect(book.chapters[0].blocks.some(b => (b as any).text?.includes('ALBUM'))).toBe(false);
+      expect(book.parserVersion).toBe(2);
+    } finally { mockState.fake = null; }
+  });
+});

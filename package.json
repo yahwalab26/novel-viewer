@@ -1,6 +1,6 @@
 {
   "name": "novel-viewer",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "private": true,
   "type": "module",
   "scripts": {

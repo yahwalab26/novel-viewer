@@ -1,6 +1,8 @@
 import type { Block, Chapter } from './model';
-// 회차 제목 패턴: "작품명 – 01", "12화", "제12화", "EP.12", "Episode 12", "프롤로그/에필로그/외전"
-export const CHAPTER_RE = /^\s*((제\s*)?\d+\s*(화|회|장)(?![가-힣]).*|EP\.?\s*\d+.*|Episode\s*\d+.*|프롤로그.*|에필로그.*|외전.*|.+\s[–—-]\s*\d{1,4})$/i;  // 마지막: "작품명 – 01" 형태
+// 회차 제목 패턴: "작품명 – 01", "12화", "제12화", "EP.12", "Episode 12", "Track 01. 제목", "프롤로그/에필로그/외전"
+export const CHAPTER_RE = /^\s*((제\s*)?\d+\s*(화|회|장)(?![가-힣]).*|EP\.?\s*\d+.*|Episode\s*\d+.*|Track\.?\s*\d+.*|Chapter\s*\d+.*|프롤로그.*|에필로그.*|외전.*|.+\s[–—-]\s*\d{1,4})$/i;  // 마지막: "작품명 – 01" 형태
+/** 회차 위에 있는 묶음 제목(앨범·부·파트): "SECOND ALBUM <제목>", "PART 2", "제2부" */
+export const PART_RE = /^\s*((PART|Part|파트)\s*\d+.*|제\s*\d+\s*부.*|[A-Za-z]+\s+(ALBUM|Album)\s*[<《〈「『\[(].*)$/;
 export const countChars = (blocks: Block[]) =>
   blocks.reduce((n, b) => n + (b.type === 'p' || b.type === 'h' ? b.text.replace(/\s/g, '').length : 0), 0);
 export const mkChapter = (i: number, title: string, blocks: Block[]): Chapter =>

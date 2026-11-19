@@ -4,10 +4,11 @@ import { docxParser } from './docx';
 import { epubParser } from './epub';
 import { hwpxParser } from './hwpx';
 import { hwpParser } from './hwp';
+import { pdfParser } from './pdf';
 
 // 포맷 추가 = 파서 구현 후 이 배열에 1줄 추가 
-const PARSERS: Parser[] = [epubParser, docxParser, hwpxParser, hwpParser];
-export const SUPPORTED = ['epub', 'docx', 'hwpx', 'hwp'];
+const PARSERS: Parser[] = [epubParser, docxParser, hwpxParser, hwpParser, pdfParser];
+export const SUPPORTED = ['epub', 'docx', 'hwpx', 'hwp', 'pdf'];
 
 export async function parseFile(file: { name: string; arrayBuffer(): Promise<ArrayBuffer> }): Promise<Book> {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';

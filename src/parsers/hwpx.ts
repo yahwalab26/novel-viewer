@@ -65,7 +65,7 @@ export const hwpxParser: Parser = {
       const text = paraText(p, nested).replace(/\s+$/, '');
       if (text.trim()) {
         const style = styles.get(p.getAttribute('styleIDRef') ?? '') ?? '';
-        if (SCENE_RE.test(text)) blocks.push({ type: 'scene' });
+        if (SCENE_RE.test(text)) blocks.push({ type: 'scene', text: text.trim() });
         else if (HEADING_STYLE.test(style) && text.trim().length <= 40) blocks.push({ type: 'h', text: text.trim() });
         else blocks.push({ type: 'p', text });
       }

@@ -15,7 +15,7 @@ function htmlToBlocks(html: string): Block[] {
   }
   for (const e of els) {
     const t = (e.textContent ?? '').trim();
-    if (e.tagName === 'HR' || (t && SCENE_RE.test(t))) out.push({ type: 'scene' });
+    if (e.tagName === 'HR' || (t && SCENE_RE.test(t))) out.push(t ? { type: 'scene', text: t.trim() } : { type: 'scene' });
     else if (!t) continue;
     else out.push(/^H\d$/.test(e.tagName) ? { type: 'h', text: t } : { type: 'p', text: t });
   }

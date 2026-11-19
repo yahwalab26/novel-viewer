@@ -20,7 +20,7 @@ export const docxParser: Parser = {
       text = text.replace(/\s+$/, '');
       if (!text.trim()) continue;                              // 빈 문단은 무시
       const style = p.getElementsByTagName('w:pStyle')[0]?.getAttribute('w:val') ?? '';
-      if (SCENE_RE.test(text)) blocks.push({ type: 'scene' });
+      if (SCENE_RE.test(text)) blocks.push({ type: 'scene', text: text.trim() });
       else if (/^(heading|제목)\s*\d?/i.test(style) || /^Title$/i.test(style)) blocks.push({ type: 'h', text: text.trim() });
       else blocks.push({ type: 'p', text });
     }

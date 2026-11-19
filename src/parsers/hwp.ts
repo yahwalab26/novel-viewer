@@ -92,7 +92,7 @@ export const hwpParser: Parser = {
       for (const raw of sectionParagraphs(bytes)) {
         const text = raw.replace(/\s+$/, '');
         if (!text.trim()) continue;
-        blocks.push(SCENE_RE.test(text) ? { type: 'scene' } : { type: 'p', text });
+        blocks.push(SCENE_RE.test(text) ? { type: 'scene', text: text.trim() } : { type: 'p', text });
       }
     }
     const sum = readSummary(bytesOf(CFB.find(cfb, '/\u0005HwpSummaryInformation')?.content) ?? new Uint8Array(0));

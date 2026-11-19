@@ -4,6 +4,7 @@ import { readSelection, type Picked } from './selection';
 import { filterAnns, installProtection, isMine } from './protect';
 import { viewProgress, locateProgress } from '../core/progress';
 import { MemoSheet, SelectionBar, renderSegs } from './AnnotationUI';
+import { useKeyboardInset } from './useKeyboardInset';
 import { DEVICE_SIZE, type ViewerSettings } from '../core/settings';
 import SettingsPanel, { rangeP } from './SettingsPanel';
 import NavPanel from './NavPanel';
@@ -29,6 +30,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   const noHide = useRef(0); const [seek, setSeek] = useState<number | null>(null);   // 슬라이더로 끄는 중인 값(0~1000)
   const lastTop = useRef(0); const touched = useRef(false);   // 사용자가 직접 스크롤했을 때만 바를 자동으로 숨긴다(이어읽기 위치 복원 스크롤은 제외)
   const wrap = useRef<HTMLDivElement>(null); const flow = useRef<HTMLDivElement>(null);
+  const rootEl = useRef<HTMLDivElement>(null); useKeyboardInset(rootEl);   // 아이폰 키보드가 패널을 가리지 않게
   const curRef = useRef<() => number>(() => 0);            // 최신 currentBlock (set·ResizeObserver에서 사용)
   const stride = useRef(1); const pending = useRef(state?.blockIndex ?? 0); const goLast = useRef(false);
   const ch = book.chapters[ci]; const scroll = s.mode === 'scroll';
@@ -245,7 +247,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
 
   return (<>
     {framed && <div className="vbackdrop" aria-hidden="true"><span>{dev === 'mobile' ? '모바일' : dev === 'tablet' ? '태블릿' : 'PC'} · {size!.w}×{size!.h}{k < 1 ? ` (${Math.round(k * 100)}%로 축소)` : ''}</span></div>}
-    <div className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}${framed ? ' framed' : ''}`} data-device={framed ? dev : 'auto'} style={{ ...vars, ...frameStyle }}>
+    <div ref={rootEl} className={`viewer ${scroll ? 'scroll' : 'paged'} fx-${s.pageTurnEffect}${protect ? ' protect' : ''}${framed ? ' framed' : ''}`} data-device={framed ? dev : 'auto'} style={{ ...vars, ...frameStyle }}>
       <div className={'bar top' + (bar || panel ? '' : ' hide')}>
         <button className="back" onClick={close} aria-label="작품 목록으로"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4 6 10l6 6" /></svg>목록</button><span className="bsp" />
         <button className="bmbtn" onClick={toggleBookmark} aria-pressed={bmHere} aria-label="현재 위치 북마크 추가/삭제"><svg width="22" height="22" viewBox="0 0 24 24" fill={bmHere ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" aria-hidden="true"><path d="M6.5 3.5h11v17l-5.5-4-5.5 4z" /></svg></button>

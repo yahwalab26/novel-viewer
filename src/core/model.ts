@@ -1,9 +1,9 @@
 // 공통 데이터 모델 — 모든 포맷은 이 구조로 변환된다. 뷰어는 이것만 안다.
-export type Format = 'epub' | 'docx' | 'hwpx' | 'hwp';
+export type Format = 'epub' | 'docx' | 'hwpx' | 'hwp' | 'pdf';
 
 export type Block =
   | { type: 'p'; text: string }          // 일반 문단 (웹소설은 대부분 이것)
-  | { type: 'scene' }                    // 장면 구분(빈 줄/***)
+  | { type: 'scene'; text?: string }    // 장면 구분 줄(***, ◇◇◇ 등). 원문 그대로 보여 주려고 text 를 보관(예전에 저장된 것은 없음 → 빈 간격)
   | { type: 'h'; text: string }          // 소제목
   | { type: 'img'; ref: string };        // 이미지(선택, 후순위)
 

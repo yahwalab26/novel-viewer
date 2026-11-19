@@ -169,3 +169,8 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 /* 글자 없이 이름만 고르는 선택 화면(문단 정렬) */
 .panel .fontlist .plainpick{min-height:56px;font-weight:500}.panel .fontlist .plainpick span{flex:1}.panel .fontlist .plainpick.on{font-weight:700}
 
+
+/* 아이폰 키보드(v0.18.1): 패널을 키보드 바로 위로 올리고, 입력칸은 16px 이상(미만이면 사파리가 확대하며 화면이 튄다) */
+.viewer .panel{bottom:var(--kb,0px);max-height:min(78%,640px,calc(var(--vvh,100%) - 12px))}
+.viewer[data-kb] .panel{padding-bottom:0}
+.viewer .panel textarea,.viewer .panel input[type=text],.viewer .panel input[type=search],.viewer .panel input:not([type]){font-size:16px}

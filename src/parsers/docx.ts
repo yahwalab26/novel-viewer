@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import type { Block, Mark, Parser } from '../core/model';
-import { SCENE_RE, splitByPages } from '../core/chapters';
+import { SCENE_RE, addMark, clipMarks, splitByPages } from '../core/chapters';
 
 export const docxParser: Parser = {
   format: 'docx', extensions: ['docx'],
@@ -27,8 +27,8 @@ export const docxParser: Parser = {
         if (SCENE_RE.test(text)) cur.push({ type: 'scene', text: text.trim() });
         else if (/^(heading|제목)\s*\d?/i.test(style) || /^Title$/i.test(style)) cur.push({ type: 'h', text: text.trim() });
         else {
-          const ms = marks.filter(m => m.s < text.length).map(m => ({ ...m, e: Math.min(m.e, text.length) }));
-          cur.push(ms.length ? { type: 'p', text, marks: ms } : { type: 'p', text });
+          const ms = clipMarks(marks, text.length);
+          cur.push(ms ? { type: 'p', text, marks: ms } : { type: 'p', text });
         }
       };
       const pbb = p.getElementsByTagName('w:pageBreakBefore')[0];
@@ -37,11 +37,7 @@ export const docxParser: Parser = {
       for (const n of Array.from(p.getElementsByTagName('*'))) {
         if (n.nodeName === 'w:t') {
           const s0 = text.length, f = flags(n); text += n.textContent ?? '';
-          const last = marks[marks.length - 1], k = Object.keys(f).sort().join();
-          if (k) {
-            if (last && last.e === s0 && Object.keys(last).filter(x => x !== 's' && x !== 'e').sort().join() === k) last.e = text.length;   // 같은 서식이 이어지면 합침
-            else marks.push({ s: s0, e: text.length, ...f });
-          }
+          addMark(marks, s0, text.length, f);
         }
         else if (n.nodeName === 'w:tab') text += '\t';
         else if (n.nodeName === 'w:br') {

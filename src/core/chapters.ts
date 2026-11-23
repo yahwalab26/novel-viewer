@@ -20,4 +20,22 @@ export function splitByPattern(blocks: Block[], fallbackTitle: string): Chapter[
   flush();
   return out.length ? out : [mkChapter(0, fallbackTitle, [])];
 }
+/**
+ * 쪽 나누기로 나뉜 원고: 쪽 하나 = 회차 하나. (작가마다 회차 나누는 방식이 달라, 쪽 나누기가 있으면 그것을 우선한다)
+ * 제목: 쪽 첫 블록이 회차 제목 패턴이거나 소제목(h)이면 그것, 아니면 '1화, 2화 …' 순번.
+ * 빈 쪽은 버리고, 제목만 있는 쪽은 제목을 다음 쪽으로 넘긴다. 내용 있는 쪽이 1개 이하면 기존 방식(제목 패턴 분할).
+ */
+export function splitByPages(pages: Block[][], fallbackTitle: string): Chapter[] {
+  const filled = pages.filter(pg => pg.length);
+  if (filled.length <= 1) return splitByPattern(filled.flat(), fallbackTitle);
+  const out: Chapter[] = []; let carry = '';
+  for (const pg of filled) {
+    const first = pg[0], hasTitle = isTitle(first) || first.type === 'h';
+    const title = hasTitle ? (first as any).text.trim() : carry || `${out.length + 1}화`;
+    const body = hasTitle ? pg.slice(1) : pg;
+    if (!body.length) { carry = title; continue; }          // 제목만 있는 쪽 → 다음 쪽 제목으로
+    out.push(mkChapter(out.length, title, body)); carry = '';
+  }
+  return out.length ? out : splitByPattern(filled.flat(), fallbackTitle);
+}
 export const SCENE_RE = /^\s*([*＊◇◆※~\-─—=#]{3,}|\*\s*\*\s*\*)\s*$/;

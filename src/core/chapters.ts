@@ -1,4 +1,4 @@
-import type { Block, Chapter } from './model';
+import type { Block, Chapter, Mark } from './model';
 // 회차 제목 패턴: "작품명 – 01", "12화", "제12화", "EP.12", "Episode 12", "Track 01. 제목", "프롤로그/에필로그/외전"
 export const CHAPTER_RE = /^\s*((제\s*)?\d+\s*(화|회|장)(?![가-힣]).*|EP\.?\s*\d+.*|Episode\s*\d+.*|Track\.?\s*\d+.*|Chapter\s*\d+.*|프롤로그.*|에필로그.*|외전.*|.+\s[–—-]\s*\d{1,4})$/i;  // 마지막: "작품명 – 01" 형태
 /** 회차 위에 있는 묶음 제목(앨범·부·파트): "SECOND ALBUM <제목>", "PART 2", "제2부" */
@@ -38,4 +38,16 @@ export function splitByPages(pages: Block[][], fallbackTitle: string): Chapter[]
   }
   return out.length ? out : splitByPattern(filled.flat(), fallbackTitle);
 }
+/** 글자 모양 구간 추가. 바로 앞 구간과 서식이 같고 이어져 있으면 합친다. 서식이 하나도 없으면 아무것도 안 함. */
+export function addMark(marks: Mark[], s: number, e: number, f: Omit<Mark, 's' | 'e'>) {
+  const key = (m: object) => Object.keys(m).filter(k => k !== 's' && k !== 'e').sort().join();
+  if (e <= s || !key(f)) return;
+  const last = marks[marks.length - 1];
+  if (last && last.e === s && key(last) === key(f)) last.e = e; else marks.push({ s, e, ...f });
+}
+/** 문단 끝 공백을 자른 뒤 marks 를 text 길이에 맞춰 정리. 비면 undefined */
+export const clipMarks = (marks: Mark[], len: number) => {
+  const out = marks.filter(m => m.s < len).map(m => ({ ...m, e: Math.min(m.e, len) }));
+  return out.length ? out : undefined;
+};
 export const SCENE_RE = /^\s*([*＊◇◆※~\-─—=#]{3,}|\*\s*\*\s*\*)\s*$/;

@@ -233,7 +233,7 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   const info = (k: string) => k === 'time' ? now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : k === 'chapter' ? ch.title : k === 'page' ? `${page + 1} / ${pages}` : k === 'percent' ? `${Math.round(prog * 100)}%` : '';
   const content = (<>
     <h2 className="ch-title">{ch.title}</h2>
-    {ch.blocks.map((b, i) => b.type === 'p' ? <p key={i} data-i={i}>{renderSegs(b.text, byBlock.get(i), meId)}</p>
+    {ch.blocks.map((b, i) => b.type === 'p' ? <p key={i} data-i={i}>{renderSegs(b.text, byBlock.get(i), meId, b.marks)}</p>
       : b.type === 'h' ? <h3 key={i} data-i={i}>{b.text}</h3>
       : b.type === 'scene' ? <div key={i} data-i={i} className="scene" role="separator">{b.text}</div> : null)}
   </>);

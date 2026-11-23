@@ -1,14 +1,33 @@
 import { useState } from 'react';
-import type { Annotation, Book } from '../core/model';
+import type { Annotation, Book, Mark } from '../core/model';
 import { segments } from './anchor';
 import { filterAnns, isMine } from './protect';
 
 export const COLORS: Annotation['color'][] = ['yellow', 'green', 'pink', 'blue'];
 const LABEL: Record<string, string> = { yellow: '노랑', green: '초록', pink: '분홍', blue: '파랑' };
 
-export const renderSegs = (text: string, anns?: Annotation[], meId?: string) =>
-  segments(text, anns).map((s, i) => s.ann
-    ? <mark key={i} data-a={s.ann.id} className={`hl hl-${s.ann.color}${s.ann.memo ? ' memo' : ''}${isMine(s.ann, meId) ? '' : ' other'}`}>{s.text}</mark> : s.text);
+/** 글자 모양(marks)을 조각 [start, start+text.length) 안에서 적용. 서식이 없으면 글자 그대로 돌려준다. */
+const styled = (text: string, start: number, marks?: Mark[]) => {
+  const end = start + text.length, ms = (marks ?? []).filter(m => m.s < end && m.e > start);
+  if (!ms.length) return [text];
+  const cuts = Array.from(new Set([start, end, ...ms.flatMap(m => [m.s, m.e]).filter(x => x > start && x < end)])).sort((p, q) => p - q);
+  return cuts.slice(0, -1).map((x, i) => {
+    const y = cuts[i + 1], on = ms.filter(m => m.s <= x && m.e >= y), t = text.slice(x - start, y - start);
+    const has = (k: 'i' | 'b' | 'u' | 'x') => on.some(m => m[k]);
+    let el: React.ReactNode = t;
+    if (has('x')) el = <s>{el}</s>; if (has('u')) el = <u>{el}</u>; if (has('b')) el = <strong>{el}</strong>; if (has('i')) el = <em>{el}</em>;
+    return <span key={i} className="fx">{el}</span>;
+  });
+};
+export const renderSegs = (text: string, anns?: Annotation[], meId?: string, marks?: Mark[]) => {
+  let pos = 0;
+  return segments(text, anns).map((s, i) => {
+    const inner = styled(s.text, pos, marks); pos += s.text.length;
+    return s.ann
+      ? <mark key={i} data-a={s.ann.id} className={`hl hl-${s.ann.color}${s.ann.memo ? ' memo' : ''}${isMine(s.ann, meId) ? '' : ' other'}`}>{inner}</mark>
+      : inner.length === 1 && typeof inner[0] === 'string' ? inner[0] : <span key={i}>{inner}</span>;
+  });
+};
 
 export function SelectionBar({ onColor, onMemo, note }: { onColor: (c: Annotation['color']) => void; onMemo: () => void; note?: string }) {
   return <div className="selbar" role="toolbar" aria-label="형광펜" onClick={e => e.stopPropagation()} onMouseDown={e => e.preventDefault()}>

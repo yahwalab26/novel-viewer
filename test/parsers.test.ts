@@ -18,6 +18,11 @@ describe('docx', () => {
     expect(b.chapters[1].charCount).toBe(5);
     expect(b.id).toHaveLength(32);
   });
+  it('제목은 파일명(확장자 제외) — 파일 속 제목·회차 1개짜리 제목도 파일명', async () => {
+    const f = await mk({ 'word/document.xml': `<w:document xmlns:w="x"><w:body>${W('본문만 있음.')}</w:body></w:document>`, 'docProps/core.xml': '<cp:coreProperties xmlns:dc="d"><dc:title>옛 제목</dc:title></cp:coreProperties>' });
+    const b = await parseFile(f('[작가] 내 소설.v2.docx'));
+    expect(b.title).toBe('[작가] 내 소설.v2'); expect(b.chapters[0].title).toBe('[작가] 내 소설.v2');
+  });
 });
 describe('epub', () => {
   it('spine 단위 회차 + 제목 추출', async () => {
@@ -28,7 +33,7 @@ describe('epub', () => {
       'OEBPS/a.xhtml': page('1화', '가'), 'OEBPS/b.xhtml': page('2화', '나'), 'OEBPS/c.xhtml': page('3화', '다'),
     });
     const b = await parseFile(f('x.epub'));
-    expect(b.title).toBe('작품'); expect(b.author).toBe('작가');
+    expect(b.title).toBe('x'); expect(b.author).toBe('작가');   // 제목은 파일명
     expect(b.chapters.map(c => c.title)).toEqual(['1화', '2화', '3화']);
     expect(b.chapters[0].blocks.map(x => x.type)).toEqual(['p', 'scene', 'p']);
   });

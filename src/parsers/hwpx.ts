@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import type { Block, Mark, Parser } from '../core/model';
-import { SCENE_RE, addMark, clipMarks, splitByPages } from '../core/chapters';
+import { SCENE_RE, addMark, clipMarks, splitByPages, withGap } from '../core/chapters';
 
 // HWPX = zip. 본문: Contents/section*.xml (순서는 Contents/content.hpf 의 spine), 스타일 이름: Contents/header.xml
 // 문단 구조: hp:p > hp:run > hp:t(텍스트, 안에 hp:tab/hp:lineBreak 가능). 표·글상자 안 문단은 별도 문단으로 이어 붙인다.
@@ -75,18 +75,21 @@ export const hwpxParser: Parser = {
     }
 
     const charFx = charFxMap(header);
+    let blank = 0;                                       // 엔터만 친 빈 문단 수(다음 블록의 gap)
     const pages: Block[][] = [[]];                        // hp:p pageBreak="1" → 그 문단부터 새 쪽
     const emit = (p: Element) => {
       const nested: Element[] = [];
-      if (p.getAttribute('pageBreak') === '1') pages.push([]);
+      if (p.getAttribute('pageBreak') === '1') { pages.push([]); blank = 0; }
       const blocks = pages[pages.length - 1];
       const raw = paraText(p, nested, charFx), text = raw.text.replace(/\s+$/, '');
       if (text.trim()) {
         const style = styles.get(p.getAttribute('styleIDRef') ?? '') ?? '';
-        if (SCENE_RE.test(text)) blocks.push({ type: 'scene', text: text.trim() });
-        else if (HEADING_STYLE.test(style) && text.trim().length <= 40) blocks.push({ type: 'h', text: text.trim() });
-        else { const ms = clipMarks(raw.marks, text.length); blocks.push(ms ? { type: 'p', text, marks: ms } : { type: 'p', text }); }
-      }
+        let blk: Block;
+        if (SCENE_RE.test(text)) blk = { type: 'scene', text: text.trim() };
+        else if (HEADING_STYLE.test(style) && text.trim().length <= 40) blk = { type: 'h', text: text.trim() };
+        else { const ms = clipMarks(raw.marks, text.length); blk = ms ? { type: 'p', text, marks: ms } : { type: 'p', text }; }
+        blocks.push(withGap(blk, blocks, blank)); blank = 0;
+      } else blank++;
       nested.forEach(emit);
     };
     for (const path of paths) {
@@ -99,6 +102,6 @@ export const hwpxParser: Parser = {
     const meta = hpf ? XML(hpf) : null;
     const title = (meta && Array.from(meta.getElementsByTagName('*')).find(e => e.localName === 'title')?.textContent?.trim()) || fileName.replace(/\.hwpx$/i, '');
     const author = meta && Array.from(meta.getElementsByTagName('*')).find(e => e.localName === 'meta' && e.getAttribute('name') === 'creator')?.textContent?.trim();
-    return { title, author: author || undefined, format: 'hwpx', parserVersion: 3, chapters: splitByPages(pages, title) };
+    return { title, author: author || undefined, format: 'hwpx', parserVersion: 4, chapters: splitByPages(pages, title) };
   },
 };

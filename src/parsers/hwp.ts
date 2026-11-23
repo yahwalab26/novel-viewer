@@ -1,5 +1,5 @@
 import type { Block, Parser } from '../core/model';
-import { SCENE_RE, splitByPattern } from '../core/chapters';
+import { SCENE_RE, splitByPattern, withGap } from '../core/chapters';
 
 // HWP 5.x(구형 바이너리) = OLE(CFB) 컨테이너.
 //  FileHeader(플래그) · \u0005HwpSummaryInformation(제목/작성자) · BodyText/Section<N>(본문, 대개 raw deflate 압축)
@@ -86,17 +86,18 @@ export const hwpParser: Parser = {
     if (!names.length) throw new Error('HWP: 본문(BodyText)을 찾을 수 없습니다');
 
     const blocks: Block[] = [];
+    let blank = 0;                                          // 엔터만 친 빈 문단 수(다음 블록의 gap)
     for (const n of names) {
       let bytes = bytesOf(CFB.find(cfb, n.replace(/^Root Entry/, ''))?.content); if (!bytes) continue;
       if (compressed) { try { bytes = inflateSync(bytes); } catch { throw new Error('HWP: 본문 압축을 해제하지 못했습니다(손상된 파일일 수 있어요)'); } }
       for (const raw of sectionParagraphs(bytes)) {
         const text = raw.replace(/\s+$/, '');
-        if (!text.trim()) continue;
-        blocks.push(SCENE_RE.test(text) ? { type: 'scene', text: text.trim() } : { type: 'p', text });
+        if (!text.trim()) { blank++; continue; }
+        blocks.push(withGap<Block>(SCENE_RE.test(text) ? { type: 'scene', text: text.trim() } : { type: 'p', text }, blocks, blank)); blank = 0;
       }
     }
     const sum = readSummary(bytesOf(CFB.find(cfb, '/\u0005HwpSummaryInformation')?.content) ?? new Uint8Array(0));
     const title = sum.title || fileName.replace(/\.hwp$/i, '');
-    return { title, author: sum.author, format: 'hwp', parserVersion: 1, chapters: splitByPattern(blocks, title) };
+    return { title, author: sum.author, format: 'hwp', parserVersion: 2, chapters: splitByPattern(blocks, title) };
   },
 };

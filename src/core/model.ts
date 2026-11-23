@@ -3,10 +3,11 @@ export type Format = 'epub' | 'docx' | 'hwpx' | 'hwp' | 'pdf';
 
 /** 글자 모양 구간. s·e = 문단 text 의 글자 위치(s 이상 e 미만). i 기울임 · b 굵게 · u 밑줄 · x 취소선 */
 export interface Mark { s: number; e: number; i?: 1; b?: 1; u?: 1; x?: 1 }
+/** gap = 이 블록 바로 앞에 엔터만 친 빈 줄이 몇 줄 있었는지(원고의 빈 줄 그대로 보이게). 없으면 0 */
 export type Block =
-  | { type: 'p'; text: string; marks?: Mark[] }   // 일반 문단 (웹소설은 대부분 이것). marks 없으면 서식 없음(옛 원고 호환)
-  | { type: 'scene'; text?: string }    // 장면 구분 줄(***, ◇◇◇ 등). 원문 그대로 보여 주려고 text 를 보관(예전에 저장된 것은 없음 → 빈 간격)
-  | { type: 'h'; text: string }          // 소제목
+  | { type: 'p'; text: string; marks?: Mark[]; gap?: number }   // 일반 문단 (웹소설은 대부분 이것). marks 없으면 서식 없음(옛 원고 호환)
+  | { type: 'scene'; text?: string; gap?: number }    // 장면 구분 줄(***, ◇◇◇ 등). 원문 그대로 보여 주려고 text 를 보관(예전에 저장된 것은 없음 → 빈 간격)
+  | { type: 'h'; text: string; gap?: number }          // 소제목
   | { type: 'img'; ref: string };        // 이미지(선택, 후순위)
 
 export interface Chapter { id: string; title: string; blocks: Block[]; charCount: number }

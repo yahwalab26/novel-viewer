@@ -5,8 +5,21 @@ export const CHAPTER_RE = /^\s*((제\s*)?\d+\s*(화|회|장)(?![가-힣]).*|EP\.
 export const PART_RE = /^\s*((PART|Part|파트)\s*\d+.*|제\s*\d+\s*부.*|[A-Za-z]+\s+(ALBUM|Album)\s*[<《〈「『\[(].*)$/;
 export const countChars = (blocks: Block[]) =>
   blocks.reduce((n, b) => n + (b.type === 'p' || b.type === 'h' ? b.text.replace(/\s/g, '').length : 0), 0);
-export const mkChapter = (i: number, title: string, blocks: Block[]): Chapter =>
-  ({ id: `c${i}`, title, blocks, charCount: countChars(blocks) });
+/** 회차 맨 앞의 빈 줄은 의미가 없으므로 첫 블록의 gap 을 지운다 */
+const noLeadGap = (bs: Block[]): Block[] => {
+  const f = bs[0] as Block & { gap?: number } | undefined;
+  if (!f || !f.gap) return bs;
+  const { gap: _g, ...rest } = f; return [rest as Block, ...bs.slice(1)];
+};
+export const mkChapter = (i: number, title: string, blocks: Block[]): Chapter => {
+  const bs = noLeadGap(blocks);
+  return { id: `c${i}`, title, blocks: bs, charCount: countChars(bs) };
+};
+/** 엔터만 친 빈 줄 최대 표시 줄 수(쪽 밀기용으로 수십 번 엔터를 친 경우 화면이 텅 비지 않게) */
+export const MAX_GAP = 5;
+/** 블록 앞에 빈 줄(blank개)이 있었다면 gap 으로 붙인다. 쪽/회차 맨 앞(cur 이 비어 있음)에서는 붙이지 않는다 */
+export const withGap = <B extends Block>(b: B, cur: Block[], blank: number): B =>
+  blank > 0 && cur.length ? { ...b, gap: Math.min(blank, MAX_GAP) } : b;
 
 const isTitle = (b: Block) => (b.type === 'h' || (b.type === 'p' && b.text.length <= 40)) && CHAPTER_RE.test((b as any).text);
 

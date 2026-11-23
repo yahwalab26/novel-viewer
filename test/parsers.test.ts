@@ -41,3 +41,45 @@ describe('epub', () => {
     await expect(parseFile({ name: 'a.xyz', arrayBuffer: async () => new ArrayBuffer(1) })).rejects.toThrow('지원하지 않는 형식');
   });
 });
+
+const PB = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+const docx = (body: string) => mk({ 'word/document.xml': `<w:document xmlns:w="x"><w:body>${body}</w:body></w:document>` });
+describe('쪽 나누기 → 회차', () => {
+  it('DOCX: 쪽 나누기마다 회차, 제목 패턴 없으면 순번(1화, 2화…)', async () => {
+    const f = await docx(`${W('첫 장면.')}${PB}${W('둘째 장면.')}${PB}${W('셋째 장면.')}`);
+    const b = await parseFile(f('작품.docx'));
+    expect(b.chapters.map(c => c.title)).toEqual(['1화', '2화', '3화']);
+    expect(b.chapters[1].blocks).toEqual([{ type: 'p', text: '둘째 장면.' }]);
+  });
+  it('DOCX: 쪽 첫 줄이 회차 제목·소제목이면 그것이 회차 제목', async () => {
+    const f = await docx(`${W('프롤로그')}${W('본문 가.')}${PB}${W('새 이야기', 'Heading1')}${W('본문 나.')}`);
+    const b = await parseFile(f('작품.docx'));
+    expect(b.chapters.map(c => c.title)).toEqual(['프롤로그', '새 이야기']);
+    expect(b.chapters[0].blocks).toHaveLength(1);
+  });
+  it('DOCX: 문단 중간 쪽 나누기, w:pageBreakBefore, 연속·맨앞 쪽 나누기(빈 쪽 무시)', async () => {
+    const mid = '<w:p><w:r><w:t>앞</w:t><w:br w:type="page"/><w:t>뒤</w:t></w:r></w:p>';
+    const before = '<w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>다음 쪽</w:t></w:r></w:p>';
+    const b = await parseFile((await docx(`${PB}${mid}${PB}${PB}${before}`))('a.docx'));
+    expect(b.chapters.map(c => c.blocks.map(x => (x as any).text))).toEqual([['앞'], ['뒤'], ['다음 쪽']]);
+  });
+  it('DOCX: 제목만 있는 쪽은 다음 쪽 제목이 됨 / 줄바꿈(br)은 \\n 유지', async () => {
+    const soft = '<w:p><w:r><w:t>가</w:t><w:br/><w:t>나</w:t></w:r></w:p>';
+    const b = await parseFile((await docx(`${W('1화')}${PB}${soft}${PB}${W('둘째.')}`))('a.docx'));
+    expect(b.chapters.map(c => c.title)).toEqual(['1화', '2화']);
+    expect((b.chapters[0].blocks[0] as any).text).toBe('가\n나');
+  });
+  it('DOCX: 자동 쪽 나눔 흔적(lastRenderedPageBreak)·쪽 나누기 없음 → 기존 방식 그대로', async () => {
+    const auto = '<w:p><w:r><w:lastRenderedPageBreak/><w:t>본문</w:t></w:r></w:p>';
+    const b = await parseFile((await docx(`${W('1화')}${auto}${W('2화')}${W('다음.')}`))('a.docx'));
+    expect(b.chapters.map(c => c.title)).toEqual(['1화', '2화']);
+  });
+  it('HWPX: hp:p pageBreak="1" 부터 새 회차', async () => {
+    const P = (t: string, pb = 0) => `<hp:p id="1" pageBreak="${pb}"><hp:run><hp:t>${t}</hp:t></hp:run></hp:p>`;
+    const f = await mk({ 'Contents/section0.xml': `<hs:sec xmlns:hs="s" xmlns:hp="p">${P('가')}${P('나')}${P('다', 1)}${P('라', 1)}</hs:sec>` });
+    const b = await parseFile(f('작품.hwpx'));
+    expect(b.chapters.map(c => c.blocks.map(x => (x as any).text))).toEqual([['가', '나'], ['다'], ['라']]);
+    expect(b.chapters.map(c => c.title)).toEqual(['1화', '2화', '3화']);
+  });
+});
+

@@ -233,9 +233,10 @@ export default function Viewer({ repo, meId, names, protect, book, state, settin
   const info = (k: string) => k === 'time' ? now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : k === 'chapter' ? ch.title : k === 'page' ? `${page + 1} / ${pages}` : k === 'percent' ? `${Math.round(prog * 100)}%` : '';
   const content = (<>
     <h2 className="ch-title">{ch.title}</h2>
-    {ch.blocks.map((b, i) => b.type === 'p' ? <p key={i} data-i={i}>{renderSegs(b.text, byBlock.get(i), meId, b.marks)}</p>
-      : b.type === 'h' ? <h3 key={i} data-i={i}>{b.text}</h3>
-      : b.type === 'scene' ? <div key={i} data-i={i} className="scene" role="separator">{b.text}</div> : null)}
+    {ch.blocks.map((b, i) => { const st = b.type !== 'img' && b.gap ? { paddingTop: `calc(${b.gap} * var(--lh) * 1em)` } : undefined;   // 엔터만 친 빈 줄 = 줄 높이 × 개수
+      return b.type === 'p' ? <p key={i} data-i={i} style={st}>{renderSegs(b.text, byBlock.get(i), meId, b.marks)}</p>
+        : b.type === 'h' ? <h3 key={i} data-i={i} style={st}>{b.text}</h3>
+        : b.type === 'scene' ? <div key={i} data-i={i} className="scene" role="separator" style={st}>{b.text}</div> : null; })}
   </>);
 
   // 화면 크기 미리보기: 모바일·태블릿은 항상 그 크기의 틀로, PC는 화면이 1280×800보다 작을 때만 틀(화면에 안 들어가면 비율대로 축소)

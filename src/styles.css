@@ -176,3 +176,5 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .viewer .panel textarea,.viewer .panel input[type=text],.viewer .panel input[type=search],.viewer .panel input:not([type]){font-size:16px}
 /* 원고 안 줄바꿈(Shift+Enter, 소프트 리턴) 반영: 연속 공백은 접고 줄바꿈만 살린다 */
 .viewer .flow p{white-space:pre-line}
+/* 원고의 글자 모양(기울임·굵게·밑줄·취소선) — 색·글꼴은 독서 테마 그대로 */
+.viewer .flow em{font-style:italic}.viewer .flow strong{font-weight:700}.viewer .flow u{text-decoration:underline}.viewer .flow s{text-decoration:line-through}.viewer .flow u s,.viewer .flow s u{text-decoration:underline line-through}

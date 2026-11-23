@@ -14,3 +14,9 @@ it('겹치는 형광펜은 나중 것이 위, 텍스트는 보존', () => {
   expect(segs.map(s => s.text).join('')).toBe('가나다라마바');
   expect(segs.map(s => s.ann?.id)).toEqual([undefined, '1', '2', undefined]);
 });
+it('문단 안 줄바꿈(\\n)이 있어도 형광펜 위치·텍스트가 그대로', () => {
+  const segs = segments('첫 줄\n둘째 줄', [A({ start: 4, end: 8, quote: '\n둘째', createdAt: 1 })]);
+  expect(segs.map(s => s.text).join('')).toBe('첫 줄\n둘째 줄');
+  expect(segs.find(s => s.ann)?.text).toBe('\n둘째');
+});
+

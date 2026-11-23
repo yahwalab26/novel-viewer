@@ -174,3 +174,5 @@ mark.other{outline:1.5px dashed rgba(120,120,120,.9);outline-offset:1px}
 .viewer .panel{bottom:var(--kb,0px);max-height:min(78%,640px,calc(var(--vvh,100%) - 12px))}
 .viewer[data-kb] .panel{padding-bottom:0}
 .viewer .panel textarea,.viewer .panel input[type=text],.viewer .panel input[type=search],.viewer .panel input:not([type]){font-size:16px}
+/* 원고 안 줄바꿈(Shift+Enter, 소프트 리턴) 반영: 연속 공백은 접고 줄바꿈만 살린다 */
+.viewer .flow p{white-space:pre-line}

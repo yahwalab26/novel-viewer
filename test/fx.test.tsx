@@ -46,3 +46,38 @@ describe('글자 모양(marks)', () => {
     expect(h).toContain('<em>마</em>');
   });
 });
+
+describe('글자 모양(marks) — HWPX', () => {
+  const NS = 'xmlns:hh="h" xmlns:hp="p" xmlns:hs="s"';
+  const HEAD = `<hh:head ${NS}><hh:refList><hh:charProperties>`
+    + '<hh:charPr id="0" height="1000"><hh:underline type="NONE" shape="SOLID"/><hh:strikeout shape="NONE"/></hh:charPr>'
+    + '<hh:charPr id="1"><hh:italic/><hh:underline type="NONE"/><hh:strikeout shape="NONE"/></hh:charPr>'
+    + '<hh:charPr id="2"><hh:bold/><hh:underline type="BOTTOM" shape="SOLID"/><hh:strikeout shape="NONE"/></hh:charPr>'
+    + '<hh:charPr id="3"><hh:underline type="NONE"/><hh:strikeout shape="SOLID"/></hh:charPr>'
+    + '</hh:charProperties></hh:refList></hh:head>';
+  const run = (id: number, t: string) => `<hp:run charPrIDRef="${id}"><hp:t>${t}</hp:t></hp:run>`;
+  async function hwpx(paras: string, header: string | null = HEAD) {
+    const z = new JSZip(); z.file('Contents/section0.xml', `<hs:sec ${NS}>${paras}</hs:sec>`); if (header) z.file('Contents/header.xml', header);
+    const buf = await z.generateAsync({ type: 'arraybuffer' });
+    return parseFile({ name: 'a.hwpx', arrayBuffer: async () => buf });
+  }
+  it('기울임·굵게+밑줄·취소선을 charPr 로 판정, NONE 은 꺼짐, 같은 서식 이어지면 합침', async () => {
+    const b = await hwpx(`<hp:p>${run(0, '가')}${run(1, '나')}${run(1, '다')}${run(2, '라')}${run(3, '마')}</hp:p>`);
+    const p = b.chapters[0].blocks[0] as any;
+    expect(p.text).toBe('가나다라마');
+    expect(p.marks).toEqual([{ s: 1, e: 3, i: 1 }, { s: 3, e: 4, b: 1, u: 1 }, { s: 4, e: 5, x: 1 }]);
+  });
+  it('줄바꿈·탭이 섞여도 위치가 맞고, 문단 끝 공백 제거 뒤 길이를 넘지 않음', async () => {
+    const r = '<hp:run charPrIDRef="1"><hp:t>나<hp:lineBreak/>다  </hp:t></hp:run>';
+    const b = await hwpx(`<hp:p>${run(0, '가')}${r}</hp:p>`);
+    const p = b.chapters[0].blocks[0] as any;
+    expect(p.text).toBe('가나\n다'); expect(p.marks).toEqual([{ s: 1, e: 4, i: 1 }]);
+  });
+  it('header.xml 이 없거나 서식 없는 문단 → marks 필드 없음(옛 원고와 동일)', async () => {
+    const a = await hwpx(`<hp:p>${run(1, '가')}</hp:p>`, null);
+    expect(a.chapters[0].blocks[0]).toEqual({ type: 'p', text: '가' });
+    const b = await hwpx(`<hp:p>${run(0, '가')}</hp:p>`);
+    expect(b.chapters[0].blocks[0]).toEqual({ type: 'p', text: '가' });
+  });
+});
+

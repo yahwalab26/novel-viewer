@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import type { Block, Parser } from '../core/model';
-import { SCENE_RE, splitByPattern } from '../core/chapters';
+import { SCENE_RE, splitByPages } from '../core/chapters';
 
 // HWPX = zip. 본문: Contents/section*.xml (순서는 Contents/content.hpf 의 spine), 스타일 이름: Contents/header.xml
 // 문단 구조: hp:p > hp:run > hp:t(텍스트, 안에 hp:tab/hp:lineBreak 가능). 표·글상자 안 문단은 별도 문단으로 이어 붙인다.
@@ -59,9 +59,11 @@ export const hwpxParser: Parser = {
       if (id && name) styles.set(id, name);
     }
 
-    const blocks: Block[] = [];
+    const pages: Block[][] = [[]];                        // hp:p pageBreak="1" → 그 문단부터 새 쪽
     const emit = (p: Element) => {
       const nested: Element[] = [];
+      if (p.getAttribute('pageBreak') === '1') pages.push([]);
+      const blocks = pages[pages.length - 1];
       const text = paraText(p, nested).replace(/\s+$/, '');
       if (text.trim()) {
         const style = styles.get(p.getAttribute('styleIDRef') ?? '') ?? '';
@@ -81,6 +83,6 @@ export const hwpxParser: Parser = {
     const meta = hpf ? XML(hpf) : null;
     const title = (meta && Array.from(meta.getElementsByTagName('*')).find(e => e.localName === 'title')?.textContent?.trim()) || fileName.replace(/\.hwpx$/i, '');
     const author = meta && Array.from(meta.getElementsByTagName('*')).find(e => e.localName === 'meta' && e.getAttribute('name') === 'creator')?.textContent?.trim();
-    return { title, author: author || undefined, format: 'hwpx', parserVersion: 1, chapters: splitByPattern(blocks, title) };
+    return { title, author: author || undefined, format: 'hwpx', parserVersion: 2, chapters: splitByPages(pages, title) };
   },
 };

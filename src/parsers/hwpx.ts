@@ -39,13 +39,14 @@ function paraText(p: Element, nested: Element[], charFx: Map<string, Fx>): { tex
   walk(p, {});
   return { text: out, marks };
 }
-/** header.xml 의 글자 모양 정의: 기울임·굵게는 자식 요소가 있으면 켜짐, 밑줄 type·취소선 shape 는 NONE 이면 꺼짐 */
+/** header.xml 의 글자 모양 정의: 기울임·굵게는 자식 요소가 있으면 켜짐, 밑줄 type·취소선 shape 는 NONE(취소선은 3D 도) 이면 꺼짐 */
 function charFxMap(header?: string): Map<string, Fx> {
   const map = new Map<string, Fx>();
   if (!header) return map;
   for (const cp of Array.from(XML(header).getElementsByTagName('*')).filter(e => e.localName === 'charPr')) {
     const kid = (n: string) => Array.from(cp.children).find(c => c.localName === n);
-    const on = (e?: Element, attr?: string) => !!e && (!attr || !/^NONE$/i.test(e.getAttribute(attr) ?? 'NONE'));
+    // 한글은 '취소선 없음'을 shape="3D" 로 저장하기도 한다(실제 취소선은 SOLID·DASH 등) → NONE·3D 는 꺼짐
+    const on = (e?: Element, attr?: string) => !!e && (!attr || !/^(NONE|3D)$/i.test(e.getAttribute(attr) ?? 'NONE'));
     const fx: Fx = { ...(kid('italic') && { i: 1 as const }), ...(kid('bold') && { b: 1 as const }), ...(on(kid('underline'), 'type') && { u: 1 as const }), ...(on(kid('strikeout'), 'shape') && { x: 1 as const }) };
     if (Object.keys(fx).length) map.set(cp.getAttribute('id') ?? '', fx);
   }

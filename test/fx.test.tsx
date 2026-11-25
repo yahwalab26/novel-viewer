@@ -67,6 +67,14 @@ describe('글자 모양(marks) — HWPX', () => {
     expect(p.text).toBe('가나다라마');
     expect(p.marks).toEqual([{ s: 1, e: 3, i: 1 }, { s: 3, e: 4, b: 1, u: 1 }, { s: 4, e: 5, x: 1 }]);
   });
+  it('한글이 "없음"으로 저장하는 strikeout shape=3D 는 취소선이 아님(실제 파일 회귀)', async () => {
+    const h = `<hh:head ${NS}><hh:refList><hh:charProperties>`
+      + '<hh:charPr id="0"><hh:underline type="NONE" shape="SOLID"/><hh:strikeout shape="3D" color="#000000"/></hh:charPr>'
+      + '<hh:charPr id="1"><hh:underline type="NONE"/><hh:strikeout shape="SOLID"/></hh:charPr>'
+      + '</hh:charProperties></hh:refList></hh:head>';
+    const b = await hwpx(`<hp:p>${run(0, '가')}${run(1, '나')}</hp:p>`, h);
+    expect((b.chapters[0].blocks[0] as any).marks).toEqual([{ s: 1, e: 2, x: 1 }]);
+  });
   it('줄바꿈·탭이 섞여도 위치가 맞고, 문단 끝 공백 제거 뒤 길이를 넘지 않음', async () => {
     const r = '<hp:run charPrIDRef="1"><hp:t>나<hp:lineBreak/>다  </hp:t></hp:run>';
     const b = await hwpx(`<hp:p>${run(0, '가')}${r}</hp:p>`);
